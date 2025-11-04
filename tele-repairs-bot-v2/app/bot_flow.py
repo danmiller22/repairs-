@@ -1,7 +1,8 @@
-from typing import Dict, Any, List
+from typing import List
 from datetime import datetime
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
 
 from .validators import normalize_date, normalize_amount, looks_like_url
 from .state import StateStore
@@ -24,7 +25,10 @@ def reply_kb(buttons: List[str]) -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Create a new repair record.", reply_markup=ReplyKeyboardMarkup([["Continue","Cancel"]], resize_keyboard=True))
+    await update.message.reply_text(
+        "Create a new repair record.",
+        reply_markup=ReplyKeyboardMarkup([["Continue","Cancel"]], resize_keyboard=True),
+    )
     context.user_data["state"] = "START"
     context.user_data["form"] = {}
 
@@ -66,7 +70,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 context.user_data["state"] = "TYPE"
                 return await ask_type(update, context)
             else:
-                await update.message.reply_text("Type date as YYYY-MM-DD", reply_markup=ReplyKeyboardMarkup([[BACK,CANCEL]], resize_keyboard=True))
+                await update.message.reply_text(
+                    "Type date as YYYY-MM-DD",
+                    reply_markup=ReplyKeyboardMarkup([[BACK, CANCEL]], resize_keyboard=True),
+                )
                 context.user_data["state"] = "DATE_TYPED"
                 return
         iso = normalize_date(text)
@@ -74,7 +81,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             form["Date"] = iso
             context.user_data["state"] = "TYPE"
             return await ask_type(update, context)
-        await update.message.reply_text("Enter date like 2025-01-31 or tap Today.", reply_markup=ReplyKeyboardMarkup([["Today","Pick date"],[BACK,CANCEL]], resize_keyboard=True))
+        await update.message.reply_text(
+            "Enter date like 2025-01-31 or tap Today.",
+            reply_markup=ReplyKeyboardMarkup([["Today","Pick date"], [BACK, CANCEL]], resize_keyboard=True),
+        )
         return
 
     if state == "DATE_TYPED":
@@ -83,7 +93,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             form["Date"] = iso
             context.user_data["state"] = "TYPE"
             return await ask_type(update, context)
-        await update.message.reply_text("Enter date like 2025-01-31.", reply_markup=ReplyKeyboardMarkup([[BACK,CANCEL]], resize_keyboard=True))
+        await update.message.reply_text(
+            "Enter date like 2025-01-31.",
+            reply_markup=ReplyKeyboardMarkup([[BACK, CANCEL]], resize_keyboard=True),
+        )
         return
 
     if state == "TYPE":
@@ -118,9 +131,12 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data["state"] = "VENDOR"
             return await ask_vendor(update, context)
         else:
-            form["Details"] = (form.get("Details","") + ("
-" if form.get("Details") else "") + text).strip()
-            await update.message.reply_text("Add more details or press Done.", reply_markup=ReplyKeyboardMarkup([[DONE, BACK, CANCEL]], resize_keyboard=True))
+            prev = form.get("Details", "").strip()
+            form["Details"] = (f"{prev}\n{text.strip()}".strip() if prev else text.strip())
+            await update.message.reply_text(
+                "Add more details or press Done.",
+                reply_markup=ReplyKeyboardMarkup([[DONE, BACK, CANCEL]], resize_keyboard=True),
+            )
             return
 
     if state == "VENDOR":
@@ -131,7 +147,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state == "TOTAL":
         amt = normalize_amount(text)
         if not amt:
-            await update.message.reply_text("Enter a number like 300 or 300.00.", reply_markup=ReplyKeyboardMarkup([[BACK,CANCEL]], resize_keyboard=True))
+            await update.message.reply_text(
+                "Enter a number like 300 or 300.00.",
+                reply_markup=ReplyKeyboardMarkup([[BACK, CANCEL]], resize_keyboard=True),
+            )
             return
         form["Total"] = amt
         context.user_data["state"] = "PAID_BY"
@@ -180,7 +199,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state == "INVOICE":
         if text != SKIP:
             if not looks_like_url(text):
-                await update.message.reply_text("Send a valid URL starting with http(s):// or tap Skip.", reply_markup=ReplyKeyboardMarkup([[SKIP, BACK, CANCEL]], resize_keyboard=True))
+                await update.message.reply_text(
+                    "Send a valid URL starting with http(s):// or tap Skip.",
+                    reply_markup=ReplyKeyboardMarkup([[SKIP, BACK, CANCEL]], resize_keyboard=True),
+                )
                 return
             form["InvoiceLink"] = text.strip()
         else:
@@ -193,7 +215,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
 async def ask_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    kb = ReplyKeyboardMarkup([["Today","Pick date"],[BACK,CANCEL]], resize_keyboard=True)
+    kb = ReplyKeyboardMarkup([["Today","Pick date"], [BACK, CANCEL]], resize_keyboard=True)
     await update.message.reply_text("Date of the repair?", reply_markup=kb)
     await persist_state(update, context, "DATE")
 
@@ -202,7 +224,7 @@ async def ask_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await persist_state(update, context, "TYPE")
 
 async def ask_unit(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Truck or trailer number?", reply_markup=ReplyKeyboardMarkup([[BACK,CANCEL]], resize_keyboard=True))
+    await update.message.reply_text("Truck or trailer number?", reply_markup=ReplyKeyboardMarkup([[BACK, CANCEL]], resize_keyboard=True))
     await persist_state(update, context, "UNIT")
 
 async def ask_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -210,7 +232,7 @@ async def ask_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await persist_state(update, context, "CATEGORY")
 
 async def ask_repair(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Short title of the work?", reply_markup=ReplyKeyboardMarkup([[BACK,CANCEL]], resize_keyboard=True))
+    await update.message.reply_text("Short title of the work?", reply_markup=ReplyKeyboardMarkup([[BACK, CANCEL]], resize_keyboard=True))
     await persist_state(update, context, "REPAIR")
 
 async def ask_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -218,11 +240,11 @@ async def ask_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await persist_state(update, context, "DETAILS")
 
 async def ask_vendor(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Vendor?", reply_markup=ReplyKeyboardMarkup([[BACK,CANCEL]], resize_keyboard=True))
+    await update.message.reply_text("Vendor?", reply_markup=ReplyKeyboardMarkup([[BACK, CANCEL]], resize_keyboard=True))
     await persist_state(update, context, "VENDOR")
 
 async def ask_total(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Total amount?", reply_markup=ReplyKeyboardMarkup([[BACK,CANCEL]], resize_keyboard=True))
+    await update.message.reply_text("Total amount?", reply_markup=ReplyKeyboardMarkup([[BACK, CANCEL]], resize_keyboard=True))
     await persist_state(update, context, "TOTAL")
 
 async def ask_paid_by(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -234,7 +256,7 @@ async def ask_paid(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await persist_state(update, context, "PAID")
 
 async def ask_reported_by(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Reported by?", reply_markup=ReplyKeyboardMarkup([["Use my name"],[BACK,CANCEL]], resize_keyboard=True))
+    await update.message.reply_text("Reported by?", reply_markup=ReplyKeyboardMarkup([["Use my name"], [BACK, CANCEL]], resize_keyboard=True))
     await persist_state(update, context, "REPORTED_BY")
 
 async def ask_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -251,28 +273,30 @@ async def ask_invoice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def show_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     form = context.user_data.get("form", {})
-    for k in ["InvoiceLink","Notes"]:
+    for k in ["InvoiceLink", "Notes"]:
         form.setdefault(k, "")
-    summary = (f"*Date:* {form.get('Date','')}\n"
-               f"*Type:* {form.get('Type','')}\n"
-               f"*Unit:* {form.get('Unit','')}\n"
-               f"*Category:* {form.get('Category','')}\n"
-               f"*Repair:* {form.get('Repair','')}\n"
-               f"*Details:* {form.get('Details','')}\n"
-               f"*Vendor:* {form.get('Vendor','')}\n"
-               f"*Total:* {form.get('Total','')}\n"
-               f"*Paid By:* {form.get('Paid By','')}\n"
-               f"*Paid?:* {form.get('Paid?','')}\n"
-               f"*Reported By:* {form.get('Reported By','')}\n"
-               f"*Status:* {form.get('Status','')}\n"
-               f"*Notes:* {form.get('Notes','')}\n"
-               f"*InvoiceLink:* {form.get('InvoiceLink','')}")
+    summary = (
+        f"*Date:* {form.get('Date','')}\n"
+        f"*Type:* {form.get('Type','')}\n"
+        f"*Unit:* {form.get('Unit','')}\n"
+        f"*Category:* {form.get('Category','')}\n"
+        f"*Repair:* {form.get('Repair','')}\n"
+        f"*Details:* {form.get('Details','')}\n"
+        f"*Vendor:* {form.get('Vendor','')}\n"
+        f"*Total:* {form.get('Total','')}\n"
+        f"*Paid By:* {form.get('Paid By','')}\n"
+        f"*Paid?:* {form.get('Paid?','')}\n"
+        f"*Reported By:* {form.get('Reported By','')}\n"
+        f"*Status:* {form.get('Status','')}\n"
+        f"*Notes:* {form.get('Notes','')}\n"
+        f"*InvoiceLink:* {form.get('InvoiceLink','')}"
+    )
     kb = InlineKeyboardMarkup([[
         InlineKeyboardButton("Save", callback_data="save"),
         InlineKeyboardButton("Edit", callback_data="edit"),
         InlineKeyboardButton("Cancel", callback_data="cancel_inline"),
     ]])
-    await update.message.reply_markdown(summary, reply_markup=kb)
+    await update.message.reply_text(summary, parse_mode=ParseMode.MARKDOWN, reply_markup=kb)
     await persist_state(update, context, "CONFIRM")
 
 async def go_back(update: Update, context: ContextTypes.DEFAULT_TYPE):

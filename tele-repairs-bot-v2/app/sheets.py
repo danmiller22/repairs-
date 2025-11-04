@@ -1,76 +1,92 @@
-import time
-from typing import Optional, Dict, Any, List
+import os
+from typing import List, Dict
 import gspread
 from google.oauth2.service_account import Credentials
 
-from .config import load_settings
+# Поля, которые мы умеем писать. Порядок не важен.
+KNOWN_FIELDS = [
+    "Date","Type","Unit","Category","Repair","Details","Vendor","Total",
+    "Paid By","Paid?","Reported By","Status","Notes","InvoiceLink","MsgKey","CreatedAt"
+]
 
-_scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+def _client() -> gspread.Client:
+    email = os.getenv("GOOGLE_CLIENT_EMAIL")
+    pkey = os.getenv("GOOGLE_PRIVATE_KEY")
+    if not email or not pkey:
+        raise RuntimeError("GOOGLE_CLIENT_EMAIL or GOOGLE_PRIVATE_KEY not set")
+
+    # Нормализуем переносы
+    pkey = pkey.replace("\\n", "\n")
+    creds = Credentials.from_service_account_info({
+        "type": "service_account",
+        "client_email": email,
+        "private_key": pkey,
+        "token_uri": "https://oauth2.googleapis.com/token",
+    }, scopes=[
+        "https://www.googleapis.com/auth/spreadsheets"
+    ])
+    return gspread.authorize(creds)
+
+def _open_worksheet():
+    ss_id = os.getenv("SPREADSHEET_ID")
+    if not ss_id:
+        raise RuntimeError("SPREADSHEET_ID not set")
+    gc = _client()
+    ss = gc.open_by_key(ss_id)
+
+    # Пытаемся открыть лист "Repairs", иначе берём первый
+    try:
+        ws = ss.worksheet("Repairs")
+    except gspread.WorksheetNotFound:
+        ws = ss.get_worksheet(0)
+    return ws
 
 class SheetsClient:
     def __init__(self):
-        self.settings = load_settings()
-        info = {
-            "type": "service_account",
-            "client_email": self.settings.GOOGLE_CLIENT_EMAIL,
-            "private_key": self.settings.GOOGLE_PRIVATE_KEY,
-            "token_uri": "https://oauth2.googleapis.com/token",
-        }
-        creds = Credentials.from_service_account_info(info, scopes=_scopes)
-        self.gc = gspread.authorize(creds)
-        self.sh = self.gc.open_by_key(self.settings.SPREADSHEET_ID)
+        self.ws = _open_worksheet()
+        self._header = [h.strip() for h in (self.ws.row_values(1) or [])]
+        # Карту "имя колонки -> индекс" держим в памяти
+        self._col_idx: Dict[str, int] = {name: i for i, name in enumerate(self._header) if name}
 
-    def _get_ws(self, title: str):
-        try:
-            return self.sh.worksheet(title)
-        except gspread.WorksheetNotFound:
-            return self.sh.add_worksheet(title=title, rows=100, cols=30)
+    def _ensure_header(self):
+        # Если шапка пустая — создадим из известных полей по минимуму
+        if not self._header:
+            self._header = [
+                "Date","Type","Unit","Category","Repair","Details","Vendor","Total",
+                "Paid By","Paid?","Reported By","Status","Notes"
+            ]
+            self.ws.update("A1", [self._header])
+            self._col_idx = {name: i for i, name in enumerate(self._header)}
 
-    def append_repair_row(self, row: List[str]):
-        ws = self._get_ws("Repairs")
-        ws.append_row(row, value_input_option="USER_ENTERED")
-
-    def msgkey_exists(self, msg_key: str) -> bool:
-        ws = self._get_ws("Repairs")
-        try:
-            col_values = ws.col_values(15)  # MsgKey column index in schema below
-        except Exception:
+    def msgkey_exists(self, msgkey: str) -> bool:
+        # Если колонки MsgKey нет — считаем, что не существует (без дедупа)
+        if "MsgKey" not in self._col_idx:
             return False
-        return msg_key in set(col_values)
+        col = self._col_idx["MsgKey"] + 1  # 1-based
+        try:
+            cell = self.ws.find(msgkey, in_column=col)
+            return cell is not None
+        except gspread.exceptions.APIError:
+            # Иногда find падает из-за размеров. В этом случае — без дедупа.
+            return False
+        except gspread.exceptions.CellNotFound:
+            return False
 
-    # Drafts
-    def save_draft(self, chat_id: int, state: str, form: Dict[str, Any]):
-        ws = self._get_ws("Drafts")
-        payload = {"state": state, "form": form, "updated_at": int(time.time())}
-        try:
-            cell = ws.find(str(chat_id))
-        except Exception:
-            cell = None
-        if cell:
-            row = cell.row
-            ws.update(f"A{row}:C{row}", [[chat_id, state, str(payload)]])
-        else:
-            ws.append_row([chat_id, state, str(payload)], value_input_option="RAW")
+    def append_repair_row(self, row: List[str]) -> None:
+        """
+        row — это фиксированный список значений в порядке KNOWN_FIELDS.
+        Мы перепакуем его в массив длиной по текущей шапке и запишем только известные колонки.
+        """
+        self._ensure_header()
 
-    def load_draft(self, chat_id: int) -> Optional[Dict[str, Any]]:
-        ws = self._get_ws("Drafts")
-        try:
-            cell = ws.find(str(chat_id))
-        except Exception:
-            return None
-        row = ws.row_values(cell.row)
-        if len(row) < 3:
-            return None
-        import ast
-        try:
-            return ast.literal_eval(row[2])
-        except Exception:
-            return None
+        # Строим словарь поле->значение
+        data_map = dict(zip(KNOWN_FIELDS, row + [""] * max(0, len(KNOWN_FIELDS) - len(row))))
 
-    def clear_draft(self, chat_id: int):
-        ws = self._get_ws("Drafts")
-        try:
-            cell = ws.find(str(chat_id))
-        except Exception:
-            return
-        ws.delete_rows(cell.row)
+        # Формируем строку строго под существующую шапку
+        out = ["" for _ in range(len(self._header))]
+        for name, idx in self._col_idx.items():
+            if name in data_map:
+                out[idx] = data_map[name]
+
+        # Пишем как USER_ENTERED, чтобы числа и даты красиво легли
+        self.ws.append_row(out, value_input_option="USER_ENTERED")

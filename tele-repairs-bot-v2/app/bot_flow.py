@@ -403,6 +403,8 @@ async def do_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(f"Missing fields: {', '.join(missing)}")
         return
 
+    # Строка строго в порядке KNOWN_FIELDS из sheets.py
+    # InvoiceLink оставляем пустым по твоему запросу
     row = [
         form.get("Date",""),
         form.get("Type",""),
@@ -417,22 +419,31 @@ async def do_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
         form.get("Reported By",""),
         form.get("Status",""),
         form.get("Notes",""),
-        "",  # InvoiceLink (убрано)
+        "",  # InvoiceLink
         f"{update.update_id}|{update.effective_chat.id}:{(update.effective_message.message_id if update.effective_message else '0')}",
         datetime.utcnow().isoformat(timespec="seconds")+"Z",
     ]
+
     sheets = SheetsClient()
-    msgkey = row[14]
-    if sheets.msgkey_exists(msgkey):
-        if getattr(update, "callback_query", None):
-            await update.callback_query.edit_message_text("Duplicate detected. Not saved.")
-        else:
-            await update.message.reply_text("Duplicate detected. Not saved.")
-        return
+
+    # Дедуп только если в таблице реально есть колонка MsgKey
+    if "MsgKey" in sheets._col_idx:
+        if sheets.msgkey_exists(row[14]):
+            if getattr(update, "callback_query", None):
+                await update.callback_query.edit_message_text("Duplicate detected. Not saved.")
+            else:
+                await update.message.reply_text("Duplicate detected. Not saved.")
+            return
+
+    # Пишем
     sheets.append_repair_row(row)
+
+    # Чистим состояние
     StateStore().clear(update.effective_chat.id)
     context.user_data.clear()
+
     if getattr(update, "callback_query", None):
         await update.callback_query.edit_message_text("Saved ✅")
     else:
         await update.message.reply_text("Saved ✅")
+

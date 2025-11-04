@@ -397,14 +397,13 @@ async def do_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
     required = ["Date","Type","Unit","Category","Repair","Vendor","Total","Paid By","Paid?","Reported By","Status"]
     missing = [k for k in required if not form.get(k)]
     if missing:
+        msg = "Missing fields: " + ", ".join(missing)
         if getattr(update, "callback_query", None):
-            await update.callback_query.edit_message_text(f"Missing fields: {', '.join(missing)}")
+            await update.callback_query.edit_message_text(msg)
         else:
-            await update.message.reply_text(f"Missing fields: {', '.join(missing)}")
+            await update.message.reply_text(msg)
         return
 
-    # Строка строго в порядке KNOWN_FIELDS из sheets.py
-    # InvoiceLink оставляем пустым по твоему запросу
     row = [
         form.get("Date",""),
         form.get("Type",""),
@@ -424,24 +423,30 @@ async def do_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
         datetime.utcnow().isoformat(timespec="seconds")+"Z",
     ]
 
-    sheets = SheetsClient()
-
-    # Дедуп только если в таблице реально есть колонка MsgKey
-    if "MsgKey" in sheets._col_idx:
-        if sheets.msgkey_exists(row[14]):
+    try:
+        sheets = SheetsClient()
+        # дедуп — только если колонка есть
+        if "MsgKey" in sheets._col_idx and sheets.msgkey_exists(row[14]):
+            text = "Duplicate detected. Not saved."
             if getattr(update, "callback_query", None):
-                await update.callback_query.edit_message_text("Duplicate detected. Not saved.")
+                await update.callback_query.edit_message_text(text)
             else:
-                await update.message.reply_text("Duplicate detected. Not saved.")
+                await update.message.reply_text(text)
             return
 
-    # Пишем
-    sheets.append_repair_row(row)
+        sheets.append_repair_row(row)
 
-    # Чистим состояние
+    except Exception as e:
+        # покажем причину прямо в чате
+        err = f"Sheets error: {type(e).__name__}: {e}"
+        if getattr(update, "callback_query", None):
+            await update.callback_query.edit_message_text(err)
+        else:
+            await update.message.reply_text(err)
+        return
+
     StateStore().clear(update.effective_chat.id)
     context.user_data.clear()
-
     if getattr(update, "callback_query", None):
         await update.callback_query.edit_message_text("Saved ✅")
     else:

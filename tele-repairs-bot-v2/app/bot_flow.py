@@ -24,6 +24,25 @@ def reply_kb(buttons: List[str]) -> ReplyKeyboardMarkup:
     rows.append([BACK, CANCEL])
     return ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True)
 
+def _hydrate_from_store(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Восстановить state/form из StateStore, если context.user_data пуст."""
+    ss = StateStore()
+    try:
+        saved = ss.get(update.effective_chat.id)
+    except Exception:
+        saved = None
+    state = None
+    form = None
+    if isinstance(saved, tuple) and len(saved) == 2:
+        state, form = saved
+    elif isinstance(saved, dict):
+        state = saved.get("state")
+        form = saved.get("form")
+    if form and not context.user_data.get("form"):
+        context.user_data["form"] = form
+    if state and not context.user_data.get("state"):
+        context.user_data["state"] = state
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Create a new repair record.",
@@ -101,11 +120,11 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if text in TYPE_CHOICES:
             form["Type"] = text
             context.user_data["state"] = "UNIT_TYPE"
-            return await ask_unit_type(update, context)   # сначала Truck/Trailer
+            return await ask_unit_type(update, context)
         await update.message.reply_text("Choose a Type.", reply_markup=reply_kb(TYPE_CHOICES))
         return
 
-    # --- Unit selection ---
+    # Unit selection
     if state == "UNIT_TYPE":
         if text in UNIT_TYPE_CHOICES:
             form["UnitType"] = "TRK" if text == "Truck" else "TRL"
@@ -229,6 +248,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await show_confirm(update, context)
 
     if state == "CONFIRM":
+        # текстовый fallback на случай отсутствия инлайн-кнопок
         low = text.lower()
         if low == "save":
             return await do_save(update, context)
@@ -241,7 +261,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Use buttons: Save, Edit, or Cancel.")
         return
 
-# --- ask* helpers ---
+# ask* helpers
 async def ask_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     kb = ReplyKeyboardMarkup([["Today","Pick date"], [BACK, CANCEL]], resize_keyboard=True)
     await update.message.reply_text("Date of the repair?", reply_markup=kb)
@@ -374,8 +394,9 @@ async def persist_state(update: Update, context: ContextTypes.DEFAULT_TYPE, new_
     form = context.user_data.get("form", {})
     StateStore().set(update.effective_chat.id, new_state, form)
 
-# --- callbacks and saving ---
+# callbacks + save
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    _hydrate_from_store(update, context)
     query = update.callback_query
     data = query.data
     await query.answer()
@@ -393,6 +414,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await do_save(update, context)
 
 async def do_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    _hydrate_from_store(update, context)
+
     form = context.user_data.get("form", {})
     required = ["Date","Type","Unit","Category","Repair","Vendor","Total","Paid By","Paid?","Reported By","Status"]
     missing = [k for k in required if not form.get(k)]
@@ -425,19 +448,16 @@ async def do_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         sheets = SheetsClient()
-        # дедуп — только если колонка есть
-        if "MsgKey" in sheets._col_idx and sheets.msgkey_exists(row[14]):
+        # дедуп — только если колонка реально есть
+        if getattr(sheets, "_col_idx", None) and "MsgKey" in sheets._col_idx and sheets.msgkey_exists(row[14]):
             text = "Duplicate detected. Not saved."
             if getattr(update, "callback_query", None):
                 await update.callback_query.edit_message_text(text)
             else:
                 await update.message.reply_text(text)
             return
-
         sheets.append_repair_row(row)
-
     except Exception as e:
-        # покажем причину прямо в чате
         err = f"Sheets error: {type(e).__name__}: {e}"
         if getattr(update, "callback_query", None):
             await update.callback_query.edit_message_text(err)
@@ -451,4 +471,3 @@ async def do_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.callback_query.edit_message_text("Saved ✅")
     else:
         await update.message.reply_text("Saved ✅")
-

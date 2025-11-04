@@ -40,14 +40,6 @@ def _hydrate_from_store(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state and not context.user_data.get("state"):
         context.user_data["state"] = state
 
-def _unit_label(form: dict) -> str:
-    ut = (form or {}).get("UnitType", "").upper()
-    if ut == "TRK":
-        return "truck"
-    if ut == "TRL":
-        return "trailer"
-    return "unit"
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Create a new repair record.",
@@ -129,12 +121,12 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Choose a Type.", reply_markup=reply_kb(TYPE_CHOICES))
         return
 
-    # Unit selection
+    # --- Unit selection fixed ---
     if state == "UNIT_TYPE":
-        if text in UNIT_TYPE_CHOICES:
-            form["UnitType"] = "TRK" if text == "Truck" else "TRL"
-            # сразу сохраняем это в стор, чтобы следующий шаг видел корректное значение
-            StateStore().set(update.effective_chat.id, "UNIT_TYPE", form)
+        t = text.strip().lower()
+        if t in ["truck", "trailer"]:
+            form["UnitType"] = "TRK" if t == "truck" else "TRL"
+            context.user_data["form"] = form  # критично: сохранить обратно
             context.user_data["state"] = "UNIT_NUMBER"
             return await ask_unit_number(update, context)
         await update.message.reply_text("Choose: Truck or Trailer.", reply_markup=reply_kb(UNIT_TYPE_CHOICES))
@@ -143,8 +135,9 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state == "UNIT_NUMBER":
         num = text.replace("TRK","").replace("TRL","").strip()
         if not num:
+            label = "truck" if form.get("UnitType") == "TRK" else "trailer"
             await update.message.reply_text(
-                f"Enter {_unit_label(form)} number.",
+                f"Enter {label} number.",
                 reply_markup=ReplyKeyboardMarkup([[BACK, CANCEL]], resize_keyboard=True),
             )
             return
@@ -161,7 +154,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         trk = text.replace("TRK","").strip()
         if not trk:
             await update.message.reply_text(
-                "Enter the truck number this trailer is connected to, e.g. 2621.",
+                "Trailer linked to which truck number? e.g. 2621.",
                 reply_markup=ReplyKeyboardMarkup([[BACK, CANCEL]], resize_keyboard=True),
             )
             return
@@ -267,7 +260,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Use buttons: Save, Edit, or Cancel.")
         return
 
-# ask* helpers
+# --- ask* helpers ---
 async def ask_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     kb = ReplyKeyboardMarkup([["Today","Pick date"], [BACK, CANCEL]], resize_keyboard=True)
     await update.message.reply_text("Date of the repair?", reply_markup=kb)
@@ -283,7 +276,7 @@ async def ask_unit_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def ask_unit_number(update: Update, context: ContextTypes.DEFAULT_TYPE):
     form = context.user_data.get("form", {})
-    label = _unit_label(form)
+    label = "truck" if form.get("UnitType") == "TRK" else "trailer"
     await update.message.reply_text(
         f"Enter {label} number.",
         reply_markup=ReplyKeyboardMarkup([[BACK, CANCEL]], resize_keyboard=True),
@@ -401,7 +394,7 @@ async def persist_state(update: Update, context: ContextTypes.DEFAULT_TYPE, new_
     form = context.user_data.get("form", {})
     StateStore().set(update.effective_chat.id, new_state, form)
 
-# callbacks + save
+# --- callbacks + save ---
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _hydrate_from_store(update, context)
     query = update.callback_query

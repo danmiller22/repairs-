@@ -25,23 +25,28 @@ def reply_kb(buttons: List[str]) -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True)
 
 def _hydrate_from_store(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Восстановить state/form из StateStore, если context.user_data пуст."""
     ss = StateStore()
     try:
         saved = ss.get(update.effective_chat.id)
     except Exception:
         saved = None
-    state = None
-    form = None
+    state = form = None
     if isinstance(saved, tuple) and len(saved) == 2:
         state, form = saved
     elif isinstance(saved, dict):
-        state = saved.get("state")
-        form = saved.get("form")
+        state, form = saved.get("state"), saved.get("form")
     if form and not context.user_data.get("form"):
         context.user_data["form"] = form
     if state and not context.user_data.get("state"):
         context.user_data["state"] = state
+
+def _unit_label(form: dict) -> str:
+    ut = (form or {}).get("UnitType", "").upper()
+    if ut == "TRK":
+        return "truck"
+    if ut == "TRL":
+        return "trailer"
+    return "unit"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -128,6 +133,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state == "UNIT_TYPE":
         if text in UNIT_TYPE_CHOICES:
             form["UnitType"] = "TRK" if text == "Truck" else "TRL"
+            # сразу сохраняем это в стор, чтобы следующий шаг видел корректное значение
+            StateStore().set(update.effective_chat.id, "UNIT_TYPE", form)
             context.user_data["state"] = "UNIT_NUMBER"
             return await ask_unit_number(update, context)
         await update.message.reply_text("Choose: Truck or Trailer.", reply_markup=reply_kb(UNIT_TYPE_CHOICES))
@@ -137,7 +144,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         num = text.replace("TRK","").replace("TRL","").strip()
         if not num:
             await update.message.reply_text(
-                "Enter a unit number, e.g. 2621 or 555.",
+                f"Enter {_unit_label(form)} number.",
                 reply_markup=ReplyKeyboardMarkup([[BACK, CANCEL]], resize_keyboard=True),
             )
             return
@@ -248,7 +255,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await show_confirm(update, context)
 
     if state == "CONFIRM":
-        # текстовый fallback на случай отсутствия инлайн-кнопок
         low = text.lower()
         if low == "save":
             return await do_save(update, context)
@@ -276,7 +282,8 @@ async def ask_unit_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await persist_state(update, context, "UNIT_TYPE")
 
 async def ask_unit_number(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    label = "truck" if context.user_data.get("form", {}).get("UnitType") == "TRK" else "trailer"
+    form = context.user_data.get("form", {})
+    label = _unit_label(form)
     await update.message.reply_text(
         f"Enter {label} number.",
         reply_markup=ReplyKeyboardMarkup([[BACK, CANCEL]], resize_keyboard=True),
@@ -448,7 +455,6 @@ async def do_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         sheets = SheetsClient()
-        # дедуп — только если колонка реально есть
         if getattr(sheets, "_col_idx", None) and "MsgKey" in sheets._col_idx and sheets.msgkey_exists(row[14]):
             text = "Duplicate detected. Not saved."
             if getattr(update, "callback_query", None):

@@ -33,7 +33,6 @@ def _open_worksheet():
     try:
         return ss.worksheet(ws_title)
     except gspread.WorksheetNotFound:
-        # fallback: первый лист
         return ss.get_worksheet(0)
 
 class SheetsClient:
@@ -41,7 +40,6 @@ class SheetsClient:
         self.ws = _open_worksheet()
         self._header = [h.strip() for h in (self.ws.row_values(1) or [])]
         if not self._header:
-            # минимальная шапка
             self._header = [
                 "Date","Type","Unit","Category","Repair","Details","Vendor","Total",
                 "Paid By","Paid?","Reported By","Status","Notes"
@@ -52,7 +50,7 @@ class SheetsClient:
     def msgkey_exists(self, msgkey: str) -> bool:
         if "MsgKey" not in self._col_idx:
             return False
-        col = self._col_idx["MsgKey"] + 1
+        col = self._col_idx["MsgKey"] + 1  # 1-based
         try:
             cell = self.ws.find(msgkey, in_column=col)
             return cell is not None
@@ -65,5 +63,4 @@ class SheetsClient:
         for name, idx in self._col_idx.items():
             if name in data_map:
                 out[idx] = data_map[name]
-        # важное: если длина строки меньше ширины шапки — gspread сам дополнит
         self.ws.append_row(out, value_input_option="USER_ENTERED")

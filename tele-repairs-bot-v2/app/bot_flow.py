@@ -2,9 +2,8 @@ from typing import List
 from datetime import datetime
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes
-from telegram.constants import ParseMode
 
-from .validators import normalize_date, normalize_amount, looks_like_url
+from .validators import normalize_date, normalize_amount
 from .state import StateStore
 from .sheets import SheetsClient
 
@@ -18,6 +17,7 @@ CATEGORY_CHOICES = ["Engine","Tires","Brakes","Electrical","Fluids/Oil","Body","
 PAIDBY_CHOICES = ["Company","Driver","Warranty","Other"]
 PAID_CHOICES = ["Yes","No"]
 STATUS_CHOICES = ["Open","In Progress","On Hold","Closed"]
+UNIT_TYPE_CHOICES = ["Truck","Trailer"]
 
 def reply_kb(buttons: List[str]) -> ReplyKeyboardMarkup:
     rows = [buttons[i:i+3] for i in range(0, len(buttons), 3)]
@@ -25,24 +25,20 @@ def reply_kb(buttons: List[str]) -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "Create a new repair record.",
-        reply_markup=ReplyKeyboardMarkup([["Continue","Cancel"]], resize_keyboard=True),
-    )
+    await update.message.reply_text("Create a new repair record.",
+        reply_markup=ReplyKeyboardMarkup([["Continue","Cancel"]], resize_keyboard=True))
     context.user_data["state"] = "START"
     context.user_data["form"] = {}
 
 async def new(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    ss = StateStore()
-    ss.clear(update.effective_chat.id)
+    StateStore().clear(update.effective_chat.id)
     context.user_data.clear()
     context.user_data["state"] = "DATE"
     context.user_data["form"] = {}
     await ask_date(update, context)
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    ss = StateStore()
-    ss.clear(update.effective_chat.id)
+    StateStore().clear(update.effective_chat.id)
     context.user_data.clear()
     await update.message.reply_text("Cancelled.", reply_markup=ReplyKeyboardRemove())
 
@@ -70,10 +66,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 context.user_data["state"] = "TYPE"
                 return await ask_type(update, context)
             else:
-                await update.message.reply_text(
-                    "Type date as YYYY-MM-DD",
-                    reply_markup=ReplyKeyboardMarkup([[BACK, CANCEL]], resize_keyboard=True),
-                )
+                await update.message.reply_text("Type date as YYYY-MM-DD",
+                    reply_markup=ReplyKeyboardMarkup([[BACK, CANCEL]], resize_keyboard=True))
                 context.user_data["state"] = "DATE_TYPED"
                 return
         iso = normalize_date(text)
@@ -81,10 +75,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             form["Date"] = iso
             context.user_data["state"] = "TYPE"
             return await ask_type(update, context)
-        await update.message.reply_text(
-            "Enter date like 2025-01-31 or tap Today.",
-            reply_markup=ReplyKeyboardMarkup([["Today","Pick date"], [BACK, CANCEL]], resize_keyboard=True),
-        )
+        await update.message.reply_text("Enter date like 2025-01-31 or tap Today.",
+            reply_markup=ReplyKeyboardMarkup([["Today","Pick date"], [BACK, CANCEL]], resize_keyboard=True))
         return
 
     if state == "DATE_TYPED":
@@ -93,22 +85,49 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             form["Date"] = iso
             context.user_data["state"] = "TYPE"
             return await ask_type(update, context)
-        await update.message.reply_text(
-            "Enter date like 2025-01-31.",
-            reply_markup=ReplyKeyboardMarkup([[BACK, CANCEL]], resize_keyboard=True),
-        )
+        await update.message.reply_text("Enter date like 2025-01-31.",
+            reply_markup=ReplyKeyboardMarkup([[BACK, CANCEL]], resize_keyboard=True))
         return
 
     if state == "TYPE":
         if text in TYPE_CHOICES:
             form["Type"] = text
-            context.user_data["state"] = "UNIT"
-            return await ask_unit(update, context)
+            context.user_data["state"] = "UNIT_TYPE"
+            return await ask_unit_type(update, context)
         await update.message.reply_text("Choose a Type.", reply_markup=reply_kb(TYPE_CHOICES))
         return
 
-    if state == "UNIT":
-        form["Unit"] = text
+    if state == "UNIT_TYPE":
+        if text in UNIT_TYPE_CHOICES:
+            form["UnitType"] = "TRK" if text == "Truck" else "TRL"
+            context.user_data["state"] = "UNIT_NUMBER"
+            return await ask_unit_number(update, context)
+        await update.message.reply_text("Choose: Truck or Trailer.", reply_markup=reply_kb(UNIT_TYPE_CHOICES))
+        return
+
+    if state == "UNIT_NUMBER":
+        num = text.replace("TRK","").replace("TRL","").strip()
+        if not num:
+            await update.message.reply_text("Enter a unit number, e.g. 2621 or 555.",
+                reply_markup=ReplyKeyboardMarkup([[BACK, CANCEL]], resize_keyboard=True))
+            return
+        if form.get("UnitType") == "TRK":
+            form["Unit"] = f"TRK {num}"
+            context.user_data["state"] = "CATEGORY"
+            return await ask_category(update, context)
+        else:
+            form["TrailerNum"] = num
+            context.user_data["state"] = "TRAILER_TRUCK"
+            return await ask_trailer_truck(update, context)
+
+    if state == "TRAILER_TRUCK":
+        trk = text.replace("TRK","").strip()
+        if not trk:
+            await update.message.reply_text("Enter the truck number this trailer is connected to, e.g. 2621.",
+                reply_markup=ReplyKeyboardMarkup([[BACK, CANCEL]], resize_keyboard=True))
+            return
+        form["Unit"] = f"TRL {form.get('TrailerNum','').strip()} ( TRK {trk} )"
+        form.pop("TrailerNum", None)
         context.user_data["state"] = "CATEGORY"
         return await ask_category(update, context)
 
@@ -133,10 +152,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             prev = form.get("Details", "").strip()
             form["Details"] = (f"{prev}\n{text.strip()}".strip() if prev else text.strip())
-            await update.message.reply_text(
-                "Add more details or press Done.",
-                reply_markup=ReplyKeyboardMarkup([[DONE, BACK, CANCEL]], resize_keyboard=True),
-            )
+            await update.message.reply_text("Add more details or press Done.",
+                reply_markup=ReplyKeyboardMarkup([[DONE, BACK, CANCEL]], resize_keyboard=True))
             return
 
     if state == "VENDOR":
@@ -147,10 +164,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state == "TOTAL":
         amt = normalize_amount(text)
         if not amt:
-            await update.message.reply_text(
-                "Enter a number like 300 or 300.00.",
-                reply_markup=ReplyKeyboardMarkup([[BACK, CANCEL]], resize_keyboard=True),
-            )
+            await update.message.reply_text("Enter a number like 300 or 300.00.",
+                reply_markup=ReplyKeyboardMarkup([[BACK, CANCEL]], resize_keyboard=True))
             return
         form["Total"] = amt
         context.user_data["state"] = "PAID_BY"
@@ -193,27 +208,25 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             form["Notes"] = text
         else:
             form["Notes"] = ""
-        context.user_data["state"] = "INVOICE"
-        return await ask_invoice(update, context)
-
-    if state == "INVOICE":
-        if text != SKIP:
-            if not looks_like_url(text):
-                await update.message.reply_text(
-                    "Send a valid URL starting with http(s):// or tap Skip.",
-                    reply_markup=ReplyKeyboardMarkup([[SKIP, BACK, CANCEL]], resize_keyboard=True),
-                )
-                return
-            form["InvoiceLink"] = text.strip()
-        else:
-            form["InvoiceLink"] = ""
+        # сразу к подтверждению (InvoiceLink больше не спрашиваем)
         context.user_data["state"] = "CONFIRM"
         return await show_confirm(update, context)
 
     if state == "CONFIRM":
+        # Fallback: текстовые команды вместо кнопок
+        low = text.lower()
+        if low == "save":
+            return await do_save(update, context)
+        if low == "edit":
+            context.user_data["state"] = "DATE"
+            await update.message.reply_text("Editing. Let's start again from Date.")
+            return await ask_date(update, context)
+        if low == "cancel":
+            return await cancel(update, context)
         await update.message.reply_text("Use buttons: Save, Edit, or Cancel.")
         return
 
+# --- ask* helpers ---
 async def ask_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     kb = ReplyKeyboardMarkup([["Today","Pick date"], [BACK, CANCEL]], resize_keyboard=True)
     await update.message.reply_text("Date of the repair?", reply_markup=kb)
@@ -223,9 +236,18 @@ async def ask_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Type?", reply_markup=reply_kb(TYPE_CHOICES))
     await persist_state(update, context, "TYPE")
 
-async def ask_unit(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Truck or trailer number?", reply_markup=ReplyKeyboardMarkup([[BACK, CANCEL]], resize_keyboard=True))
-    await persist_state(update, context, "UNIT")
+async def ask_unit_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Unit type?", reply_markup=reply_kb(UNIT_TYPE_CHOICES))
+    await persist_state(update, context, "UNIT_TYPE")
+
+async def ask_unit_number(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    label = "truck" if context.user_data.get("form", {}).get("UnitType") == "TRK" else "trailer"
+    await update.message.reply_text(f"Enter {label} number.", reply_markup=ReplyKeyboardMarkup([[BACK, CANCEL]], resize_keyboard=True))
+    await persist_state(update, context, "UNIT_NUMBER")
+
+async def ask_trailer_truck(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Trailer linked to which truck number?", reply_markup=ReplyKeyboardMarkup([[BACK, CANCEL]], resize_keyboard=True))
+    await persist_state(update, context, "TRAILER_TRUCK")
 
 async def ask_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Category?", reply_markup=reply_kb(CATEGORY_CHOICES))
@@ -267,40 +289,40 @@ async def ask_notes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Notes (optional).", reply_markup=ReplyKeyboardMarkup([[SKIP, BACK, CANCEL]], resize_keyboard=True))
     await persist_state(update, context, "NOTES")
 
-async def ask_invoice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Invoice link (optional). Send a URL or Skip.", reply_markup=ReplyKeyboardMarkup([[SKIP, BACK, CANCEL]], resize_keyboard=True))
-    await persist_state(update, context, "INVOICE")
-
 async def show_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     form = context.user_data.get("form", {})
-    for k in ["InvoiceLink", "Notes"]:
-        form.setdefault(k, "")
+    # InvoiceLink всегда пуст
+    form.setdefault("Notes", "")
     summary = (
-        f"*Date:* {form.get('Date','')}\n"
-        f"*Type:* {form.get('Type','')}\n"
-        f"*Unit:* {form.get('Unit','')}\n"
-        f"*Category:* {form.get('Category','')}\n"
-        f"*Repair:* {form.get('Repair','')}\n"
-        f"*Details:* {form.get('Details','')}\n"
-        f"*Vendor:* {form.get('Vendor','')}\n"
-        f"*Total:* {form.get('Total','')}\n"
-        f"*Paid By:* {form.get('Paid By','')}\n"
-        f"*Paid?:* {form.get('Paid?','')}\n"
-        f"*Reported By:* {form.get('Reported By','')}\n"
-        f"*Status:* {form.get('Status','')}\n"
-        f"*Notes:* {form.get('Notes','')}\n"
-        f"*InvoiceLink:* {form.get('InvoiceLink','')}"
+        "Confirm:\n"
+        f"Date: {form.get('Date','')}\n"
+        f"Type: {form.get('Type','')}\n"
+        f"Unit: {form.get('Unit','')}\n"
+        f"Category: {form.get('Category','')}\n"
+        f"Repair: {form.get('Repair','')}\n"
+        f"Details: {form.get('Details','')}\n"
+        f"Vendor: {form.get('Vendor','')}\n"
+        f"Total: {form.get('Total','')}\n"
+        f"Paid By: {form.get('Paid By','')}\n"
+        f"Paid?: {form.get('Paid?','')}\n"
+        f"Reported By: {form.get('Reported By','')}\n"
+        f"Status: {form.get('Status','')}\n"
+        f"Notes: {form.get('Notes','')}\n"
     )
     kb = InlineKeyboardMarkup([[
         InlineKeyboardButton("Save", callback_data="save"),
         InlineKeyboardButton("Edit", callback_data="edit"),
         InlineKeyboardButton("Cancel", callback_data="cancel_inline"),
     ]])
-    await update.message.reply_text(summary, parse_mode=ParseMode.MARKDOWN, reply_markup=kb)
+    await update.message.reply_text(summary, reply_markup=kb)
     await persist_state(update, context, "CONFIRM")
 
 async def go_back(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    order = ["DATE","TYPE","UNIT","CATEGORY","REPAIR","DETAILS","VENDOR","TOTAL","PAID_BY","PAID","REPORTED_BY","STATUS","NOTES","INVOICE","CONFIRM"]
+    order = [
+        "DATE","TYPE","UNIT_TYPE","UNIT_NUMBER","TRAILER_TRUCK",
+        "CATEGORY","REPAIR","DETAILS","VENDOR","TOTAL",
+        "PAID_BY","PAID","REPORTED_BY","STATUS","NOTES","CONFIRM"
+    ]
     state = context.user_data.get("state","DATE")
     try:
         idx = order.index(state)
@@ -310,7 +332,9 @@ async def go_back(update: Update, context: ContextTypes.DEFAULT_TYPE):
     fn = {
         "DATE": ask_date,
         "TYPE": ask_type,
-        "UNIT": ask_unit,
+        "UNIT_TYPE": ask_unit_type,
+        "UNIT_NUMBER": ask_unit_number,
+        "TRAILER_TRUCK": ask_trailer_truck,
         "CATEGORY": ask_category,
         "REPAIR": ask_repair,
         "DETAILS": ask_details,
@@ -321,7 +345,6 @@ async def go_back(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "REPORTED_BY": ask_reported_by,
         "STATUS": ask_status,
         "NOTES": ask_notes,
-        "INVOICE": ask_invoice,
         "CONFIRM": show_confirm,
     }[prev_state]
     context.user_data["state"] = prev_state
@@ -329,16 +352,15 @@ async def go_back(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def persist_state(update: Update, context: ContextTypes.DEFAULT_TYPE, new_state: str):
     form = context.user_data.get("form", {})
-    ss = StateStore()
-    ss.set(update.effective_chat.id, new_state, form)
+    StateStore().set(update.effective_chat.id, new_state, form)
 
+# --- callbacks and saving ---
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     data = query.data
     await query.answer()
     if data == "cancel_inline":
-        ss = StateStore()
-        ss.clear(update.effective_chat.id)
+        StateStore().clear(update.effective_chat.id)
         context.user_data.clear()
         await query.edit_message_text("Cancelled.")
         return
@@ -348,38 +370,52 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await ask_date(update, context)
         return
     if data == "save":
-        form = context.user_data.get("form", {})
-        required = ["Date","Type","Unit","Category","Repair","Vendor","Total","Paid By","Paid?","Reported By","Status"]
-        missing = [k for k in required if not form.get(k)]
-        if missing:
-            await query.edit_message_text(f"Missing fields: {', '.join(missing)}")
-            return
-        row = [
-            form.get("Date",""),
-            form.get("Type",""),
-            form.get("Unit",""),
-            form.get("Category",""),
-            form.get("Repair",""),
-            form.get("Details",""),
-            form.get("Vendor",""),
-            form.get("Total",""),
-            form.get("Paid By",""),
-            form.get("Paid?",""),
-            form.get("Reported By",""),
-            form.get("Status",""),
-            form.get("Notes",""),
-            form.get("InvoiceLink",""),
-            f"{update.update_id}|{update.effective_chat.id}:{update.effective_message.message_id}",
-            datetime.utcnow().isoformat(timespec="seconds")+"Z",
-        ]
-        sheets = SheetsClient()
-        msgkey = row[14]
-        if sheets.msgkey_exists(msgkey):
-            await query.edit_message_text("Duplicate detected. Not saved.")
-            return
-        sheets.append_repair_row(row)
-        ss = StateStore()
-        ss.clear(update.effective_chat.id)
-        context.user_data.clear()
-        await query.edit_message_text("Saved ✅")
+        await do_save(update, context)
+
+async def do_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # works for both callback and text fallback
+    form = context.user_data.get("form", {})
+    required = ["Date","Type","Unit","Category","Repair","Vendor","Total","Paid By","Paid?","Reported By","Status"]
+    missing = [k for k in required if not form.get(k)]
+    if missing:
+        # answer in place
+        if getattr(update, "callback_query", None):
+            await update.callback_query.edit_message_text(f"Missing fields: {', '.join(missing)}")
+        else:
+            await update.message.reply_text(f"Missing fields: {', '.join(missing)}")
         return
+
+    row = [
+        form.get("Date",""),
+        form.get("Type",""),
+        form.get("Unit",""),
+        form.get("Category",""),
+        form.get("Repair",""),
+        form.get("Details",""),
+        form.get("Vendor",""),
+        form.get("Total",""),
+        form.get("Paid By",""),
+        form.get("Paid?",""),
+        form.get("Reported By",""),
+        form.get("Status",""),
+        form.get("Notes",""),
+        "",  # InvoiceLink — всегда пусто
+        f"{update.update_id}|{update.effective_chat.id}:{(update.effective_message.message_id if update.effective_message else '0')}",
+        datetime.utcnow().isoformat(timespec="seconds")+"Z",
+    ]
+    sheets = SheetsClient()
+    msgkey = row[14]
+    if sheets.msgkey_exists(msgkey):
+        # duplicate protection
+        if getattr(update, "callback_query", None):
+            await update.callback_query.edit_message_text("Duplicate detected. Not saved.")
+        else:
+            await update.message.reply_text("Duplicate detected. Not saved.")
+        return
+    sheets.append_repair_row(row)
+    StateStore().clear(update.effective_chat.id)
+    context.user_data.clear()
+    if getattr(update, "callback_query", None):
+        await update.callback_query.edit_message_text("Saved ✅")
+    else:
+        await update.message.reply_text("Saved ✅")

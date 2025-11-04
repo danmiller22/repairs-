@@ -1,5 +1,5 @@
 import logging
-import logging.config
+import os
 from fastapi import FastAPI, Request, Header, HTTPException
 from fastapi.responses import JSONResponse, PlainTextResponse
 from telegram import Update
@@ -8,14 +8,17 @@ from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQu
 from .config import load_settings
 from .bot_flow import start, new, cancel, handle_text, handle_callback
 
-# Логи
-logging.config.fileConfig('app/logging.ini', disable_existing_loggers=False)
-log = logging.getLogger("uvicorn.error")
+# Логи без внешних ini, чтобы ничего не ломало запуск
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+log = logging.getLogger("app")
 
 settings = load_settings()
 app = FastAPI()
 
-# Telegram app
+# Telegram Application
 tg: Application = Application.builder().token(settings.TELEGRAM_BOT_TOKEN).build()
 tg.add_handler(CommandHandler("start", start))
 tg.add_handler(CommandHandler("new", new))
@@ -36,13 +39,13 @@ async def on_shutdown():
     await tg.stop()
     await tg.shutdown()
 
-@app.get("/healthz")
-async def healthz():
-    return {"ok": True}
-
 @app.get("/")
 async def root():
     return PlainTextResponse("ok")
+
+@app.get("/healthz")
+async def healthz():
+    return {"ok": True}
 
 @app.post("/webhook/{secret}")
 async def telegram_webhook(
@@ -50,20 +53,19 @@ async def telegram_webhook(
     secret: str,
     x_telegram_bot_api_secret_token: str = Header(None),
 ):
-    # Проверяем только путь
+    # Проверяем только секрет в пути
     if secret != settings.WEBHOOK_SECRET_TOKEN:
-        log.warning("403 bad path secret")
+        log.warning("403 bad path secret: got=%r", secret)
         raise HTTPException(status_code=403, detail="bad path secret")
 
-    # Хедер только логируем, не блокируем
+    # Хедер не обязателен, только логируем
     if x_telegram_bot_api_secret_token != settings.WEBHOOK_SECRET_TOKEN:
-        log.warning("Header secret mismatch. Got=%r", x_telegram_bot_api_secret_token)
+        log.warning("Header secret mismatch: got=%r", x_telegram_bot_api_secret_token)
 
     try:
         data = await request.json()
     except Exception as e:
-        log.exception("Bad JSON in webhook: %s", e)
-        # Всегда 200, чтобы Telegram не ретраил бесконечно
+        log.exception("Bad JSON: %s", e)
         return JSONResponse({"ok": True})
 
     try:
@@ -71,7 +73,6 @@ async def telegram_webhook(
         update = Update.de_json(data, tg.bot)
         await tg.process_update(update)
     except Exception as e:
-        # Любая ошибка в хендлерах не должна валить вебхук
         log.exception("Handler error: %s", e)
 
     return JSONResponse({"ok": True})

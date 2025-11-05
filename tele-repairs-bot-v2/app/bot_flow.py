@@ -122,7 +122,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if state == "TYPE":
-        # Принимаем выбор из списка или любой текст
+        # принимаем выбор из списка или любой текст
         if text:
             form["Type"] = text if text not in TYPE_CHOICES else text
             context.user_data["form"] = form
@@ -131,7 +131,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Choose a Type.", reply_markup=reply_kb(TYPE_CHOICES))
         return
 
-    # Unit selection
     if state == "UNIT_TYPE":
         t = text.strip().lower()
         if t in ["truck", "trailer"]:
@@ -412,11 +411,17 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "cancel_inline":
         StateStore().clear(update.effective_chat.id)
         context.user_data.clear()
-        await query.edit_message_text("Cancelled.")
+        try:
+            await query.edit_message_text("Cancelled.")
+        except Exception:
+            await query.message.reply_text("Cancelled.")
         return
     if data == "edit":
         context.user_data["state"] = "DATE"
-        await query.edit_message_text("Editing. Let's start again from Date.")
+        try:
+            await query.edit_message_text("Editing. Let's start again from Date.")
+        except Exception:
+            await query.message.reply_text("Editing. Let's start again from Date.")
         await ask_date(update, context)
         return
     if data == "save":
@@ -426,14 +431,12 @@ async def do_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _hydrate_from_store(update, context)
 
     form = context.user_data.get("form", {}) or {}
-
-    # Автозаполнение, если Date/Type пустые
+    # Автозаполняем критичные поля
     if not form.get("Date"):
         form["Date"] = normalize_date("today")
     if not form.get("Type"):
         form["Type"] = "Other"
 
-    # Сохранить обратно для консистентности
     context.user_data["form"] = form
     StateStore().set(update.effective_chat.id, context.user_data.get("state","CONFIRM"), form)
 
@@ -442,7 +445,10 @@ async def do_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if missing:
         msg = "Missing fields: " + ", ".join(missing)
         if getattr(update, "callback_query", None):
-            await update.callback_query.edit_message_text(msg)
+            try:
+                await update.callback_query.edit_message_text(msg)
+            except Exception:
+                await update.callback_query.message.reply_text(msg)
         else:
             await update.message.reply_text(msg)
         return
@@ -470,23 +476,30 @@ async def do_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
         sheets = SheetsClient()
         if getattr(sheets, "_col_idx", None) and "MsgKey" in sheets._col_idx and sheets.msgkey_exists(row[14]):
             text = "Duplicate detected. Not saved."
-            if getattr(update, "callback_query", None):
+            try:
                 await update.callback_query.edit_message_text(text)
-            else:
-                await update.message.reply_text(text)
+            except Exception:
+                await update.callback_query.message.reply_text(text)
             return
         sheets.append_repair_row(row)
     except Exception as e:
         err = f"Sheets error: {type(e).__name__}: {e}"
         if getattr(update, "callback_query", None):
-            await update.callback_query.edit_message_text(err)
+            try:
+                await update.callback_query.edit_message_text(err)
+            except Exception:
+                await update.callback_query.message.reply_text(err)
         else:
             await update.message.reply_text(err)
         return
 
     StateStore().clear(update.effective_chat.id)
     context.user_data.clear()
+    # Надёжное подтверждение
     if getattr(update, "callback_query", None):
-        await update.callback_query.edit_message_text("Saved ✅")
+        try:
+            await update.callback_query.edit_message_text("Saved ✅")
+        except Exception:
+            await update.callback_query.message.reply_text("Saved ✅")
     else:
         await update.message.reply_text("Saved ✅")

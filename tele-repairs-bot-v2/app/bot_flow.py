@@ -122,7 +122,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if state == "TYPE":
-        # принимаем выбор из списка или любой текст
         if text:
             form["Type"] = text if text not in TYPE_CHOICES else text
             context.user_data["form"] = form
@@ -268,7 +267,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Use buttons: Save, Edit, or Cancel.")
         return
 
-# --- ask* helpers ---
+# ask* helpers
 async def ask_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     kb = ReplyKeyboardMarkup([["Today","Pick date"], [BACK, CANCEL]], resize_keyboard=True)
     await update.message.reply_text("Date of the repair?", reply_markup=kb)
@@ -402,41 +401,44 @@ async def persist_state(update: Update, context: ContextTypes.DEFAULT_TYPE, new_
     form = context.user_data.get("form", {})
     StateStore().set(update.effective_chat.id, new_state, form)
 
-# --- callbacks + save ---
+# callbacks + save
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _hydrate_from_store(update, context)
-    query = update.callback_query
-    data = query.data
-    await query.answer()
+    q = update.callback_query
+    data = q.data
+    await q.answer()
     if data == "cancel_inline":
         StateStore().clear(update.effective_chat.id)
         context.user_data.clear()
         try:
-            await query.edit_message_text("Cancelled.")
+            await q.edit_message_text("Cancelled.")
         except Exception:
-            await query.message.reply_text("Cancelled.")
+            await q.message.reply_text("Cancelled.")
         return
     if data == "edit":
         context.user_data["state"] = "DATE"
         try:
-            await query.edit_message_text("Editing. Let's start again from Date.")
+            await q.edit_message_text("Editing. Let's start again from Date.")
         except Exception:
-            await query.message.reply_text("Editing. Let's start again from Date.")
+            await q.message.reply_text("Editing. Let's start again from Date.")
         await ask_date(update, context)
         return
     if data == "save":
+        # визуальный отклик сразу
+        try:
+            await q.edit_message_text("Saving…")
+        except Exception:
+            await q.message.reply_text("Saving…")
         await do_save(update, context)
 
 async def do_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _hydrate_from_store(update, context)
 
     form = context.user_data.get("form", {}) or {}
-    # Автозаполняем критичные поля
     if not form.get("Date"):
         form["Date"] = normalize_date("today")
     if not form.get("Type"):
         form["Type"] = "Other"
-
     context.user_data["form"] = form
     StateStore().set(update.effective_chat.id, context.user_data.get("state","CONFIRM"), form)
 
@@ -446,9 +448,9 @@ async def do_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = "Missing fields: " + ", ".join(missing)
         if getattr(update, "callback_query", None):
             try:
-                await update.callback_query.edit_message_text(msg)
-            except Exception:
                 await update.callback_query.message.reply_text(msg)
+            except Exception:
+                pass
         else:
             await update.message.reply_text(msg)
         return
@@ -467,39 +469,32 @@ async def do_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
         form.get("Reported By",""),
         form.get("Status",""),
         form.get("Notes",""),
-        "",  # InvoiceLink
-        f"{update.update_id}|{update.effective_chat.id}:{(update.effective_message.message_id if update.effective_message else '0')}",
+        "",
+        f"{update.update_id}|{update.effective_chat.id}:{(getattr(update.effective_message,'message_id', '0'))}",
         datetime.utcnow().isoformat(timespec="seconds")+"Z",
     ]
 
     try:
         sheets = SheetsClient()
-        if getattr(sheets, "_col_idx", None) and "MsgKey" in sheets._col_idx and sheets.msgkey_exists(row[14]):
-            text = "Duplicate detected. Not saved."
-            try:
-                await update.callback_query.edit_message_text(text)
-            except Exception:
-                await update.callback_query.message.reply_text(text)
-            return
         sheets.append_repair_row(row)
     except Exception as e:
         err = f"Sheets error: {type(e).__name__}: {e}"
         if getattr(update, "callback_query", None):
             try:
-                await update.callback_query.edit_message_text(err)
-            except Exception:
                 await update.callback_query.message.reply_text(err)
+            except Exception:
+                pass
         else:
             await update.message.reply_text(err)
         return
 
     StateStore().clear(update.effective_chat.id)
     context.user_data.clear()
-    # Надёжное подтверждение
+    # гарантированное подтверждение
     if getattr(update, "callback_query", None):
         try:
-            await update.callback_query.edit_message_text("Saved ✅")
-        except Exception:
             await update.callback_query.message.reply_text("Saved ✅")
+        except Exception:
+            pass
     else:
         await update.message.reply_text("Saved ✅")

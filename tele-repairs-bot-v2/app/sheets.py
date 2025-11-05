@@ -3,19 +3,20 @@ from typing import List, Dict
 import gspread
 from google.oauth2.service_account import Credentials
 
-# Порядок «канонических» полей
 KNOWN_FIELDS = [
     "Date","Type","Unit","Category","Repair","Details","Vendor","Total",
     "Paid By","Paid?","Reported By","Status","Notes","InvoiceLink","MsgKey","CreatedAt"
 ]
 
 def _normalize_pkey(pkey: str) -> str:
-    # Поддержка и \n-строки, и «настоящих» переносов
-    pkey = (pkey or "").strip().replace("\\n", "\n")
-    if not pkey.startswith("-----BEGIN PRIVATE KEY-----"):
-        # Некоторые панели выдают ключ без заголовков — это ошибка окружения
-        raise RuntimeError("GOOGLE_PRIVATE_KEY is not a valid PEM")
-    return pkey
+    p = (pkey or "").strip()
+    # снимаем случайные внешние кавычки
+    if (p.startswith('"') and p.endswith('"')) or (p.startswith("'") and p.endswith("'")):
+        p = p[1:-1]
+    p = p.replace("\\n", "\n")
+    if "PRIVATE KEY" not in p:
+        raise RuntimeError("GOOGLE_PRIVATE_KEY not valid PEM")
+    return p
 
 def _client() -> gspread.Client:
     email = os.getenv("GOOGLE_CLIENT_EMAIL")
@@ -37,7 +38,6 @@ def _open_worksheet():
     ss_id = os.getenv("SPREADSHEET_ID")
     if not ss_id:
         raise RuntimeError("SPREADSHEET_ID not set")
-
     gc = _client()
     ss = gc.open_by_key(ss_id)
 
@@ -50,7 +50,7 @@ def _open_worksheet():
                 if getattr(ws, "id", None) == target:
                     return ws
         except Exception:
-            pass  # упадём на титул/первый
+            pass
 
     # 2) по названию
     title = os.getenv("WORKSHEET_TITLE", "").strip()
@@ -66,42 +66,29 @@ def _open_worksheet():
 class SheetsClient:
     def __init__(self):
         self.ws = _open_worksheet()
-        # Текущая шапка
         self._header = [h.strip() for h in (self.ws.row_values(1) or [])]
         if not self._header:
-            # Базовая шапка, если пусто
             self._header = [
                 "Date","Type","Unit","Category","Repair","Details","Vendor","Total",
                 "Paid By","Paid?","Reported By","Status","Notes"
             ]
             self.ws.update("A1", [self._header])
-        # Индексация по имени
         self._col_idx: Dict[str, int] = {name: i for i, name in enumerate(self._header) if name}
 
     def msgkey_exists(self, msgkey: str) -> bool:
         if "MsgKey" not in self._col_idx:
             return False
         try:
-            col = self._col_idx["MsgKey"] + 1  # 1-based
+            col = self._col_idx["MsgKey"] + 1
             cell = self.ws.find(msgkey, in_column=col)
             return cell is not None
         except Exception:
             return False
 
-    def append_repair_row(self, row: List[str]) -> dict:
-        """
-        Принимает row в порядке KNOWN_FIELDS.
-        Собирает выходной ряд под текущую шапку и делает append.
-        Возвращает ответ Google API.
-        """
-        # Поле->значение
+    def append_repair_row(self, row: List[str]) -> None:
         data_map = dict(zip(KNOWN_FIELDS, row + [""] * max(0, len(KNOWN_FIELDS) - len(row))))
-
-        # Формируем ровно под имеющуюся шапку
         out = ["" for _ in range(len(self._header))]
         for name, idx in self._col_idx.items():
             if name in data_map:
                 out[idx] = data_map[name]
-
-        # Пишем как USER_ENTERED, чтобы числа и даты легли нормально
-        return self.ws.append_row(out, value_input_option="USER_ENTERED")
+        self.ws.append_row(out, value_input_option="USER_ENTERED")

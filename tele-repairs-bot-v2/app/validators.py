@@ -1,29 +1,18 @@
-from datetime import datetime, date
+from datetime import datetime
 import re
-from typing import Optional
 
-def normalize_date(s: str) -> Optional[str]:
-    s = s.strip()
-    if s.lower() == "today":
-        return date.today().isoformat()
+def normalize_date(text: str) -> str | None:
+    t = (text or "").strip().lower()
+    if t in ("today","now"):
+        return datetime.utcnow().date().isoformat()
+    m = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", t)
+    if not m: return None
     try:
-        d = datetime.strptime(s, "%Y-%m-%d").date()
-        return d.isoformat()
+        return datetime(int(m.group(1)), int(m.group(2)), int(m.group(3))).date().isoformat()
     except ValueError:
         return None
 
-_amount_re = re.compile(r"[\s\$]")
-
-def normalize_amount(s: str) -> Optional[str]:
-    s = s.strip()
-    s = _amount_re.sub("", s)
-    s = s.replace(",", ".")
-    try:
-        return f"{float(s):.2f}"
-    except ValueError:
-        return None
-
-_url_re = re.compile(r"^https?://", re.IGNORECASE)
-
-def looks_like_url(s: str) -> bool:
-    return bool(_url_re.match(s.strip()))
+def normalize_amount(text: str) -> str | None:
+    t = (text or "").strip().replace(",", "")
+    m = re.fullmatch(r"-?\d+(\.\d{1,2})?", t)
+    return t if m else None

@@ -1,18 +1,12 @@
-from typing import Dict, Any
-from .sheets import SheetsClient
+# простое in-memory хранилище
+_store = {}
 
 class StateStore:
-    def __init__(self):
-        self.sheets = SheetsClient()
+    def get(self, chat_id):
+        return _store.get(int(chat_id))
 
-    def get(self, chat_id: int) -> Dict[str, Any]:
-        draft = self.sheets.load_draft(chat_id) or {}
-        state = draft.get("state") or "DATE"
-        form = draft.get("form") or {}
-        return {"state": state, "form": form}
+    def set(self, chat_id, state, form):
+        _store[int(chat_id)] = {"state": state, "form": dict(form or {})}
 
-    def set(self, chat_id: int, state: str, form: Dict[str, Any]):
-        self.sheets.save_draft(chat_id, state, form)
-
-    def clear(self, chat_id: int):
-        self.sheets.clear_draft(chat_id)
+    def clear(self, chat_id):
+        _store.pop(int(chat_id), None)

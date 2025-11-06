@@ -8,11 +8,9 @@ from telegram.ext import (
 
 from .config import load_settings
 from .bot_flow import start, new, cancel, handle_text, handle_callback, do_save
+from .sheets import SheetsClient
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("app")
 
 settings = load_settings()
@@ -23,8 +21,8 @@ tg: Application = Application.builder().token(settings.TELEGRAM_BOT_TOKEN).build
 tg.add_handler(CommandHandler("start", start))
 tg.add_handler(CommandHandler("new", new))
 tg.add_handler(CommandHandler("cancel", cancel))
-tg.add_handler(CommandHandler("save", do_save))                 # ручной сейв
-tg.add_handler(CallbackQueryHandler(handle_callback))           # ловим все коллбеки
+tg.add_handler(CommandHandler("save", do_save))         # ручной сейв
+tg.add_handler(CallbackQueryHandler(handle_callback))   # ловим все коллбеки
 tg.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_text))
 
 @app.on_event("startup")
@@ -67,8 +65,6 @@ async def telegram_webhook(
     return JSONResponse({"ok": True})
 
 # --- debug ---
-from .sheets import SheetsClient
-
 @app.get("/debug/gs-info/{secret}")
 async def gs_info(secret: str):
     if secret != settings.WEBHOOK_SECRET_TOKEN:
@@ -87,8 +83,8 @@ async def gs_info(secret: str):
 async def gs_append(secret: str):
     if secret != settings.WEBHOOK_SECRET_TOKEN:
         raise HTTPException(status_code=403, detail="bad path secret")
-    sc = SheetsClient()
     from datetime import datetime as _dt
+    sc = SheetsClient()
     row = {
         "Date": _dt.utcnow().date().isoformat(),
         "Type": "Test",
@@ -105,5 +101,5 @@ async def gs_append(secret: str):
         "Notes": "debug",
     }
     out = [row.get(h, "") for h in sc._header]
-    sc.ws.append_row(out, value_input_option="USER_ENTERED")
+    sc.ws.insert_row(out, index=2, value_input_option="USER_ENTERED")
     return {"ok": True, "written_to": sc.ws.title, "gid": getattr(sc.ws, "id", None)}

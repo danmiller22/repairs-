@@ -31,8 +31,7 @@ def _client() -> gspread.Client:
 
 def _open_ws():
     ss_id = os.getenv("SPREADSHEET_ID")
-    if not ss_id:
-        raise RuntimeError("SPREADSHEET_ID not set")
+    if not ss_id: raise RuntimeError("SPREADSHEET_ID not set")
     ss = _client().open_by_key(ss_id)
 
     gid = os.getenv("WORKSHEET_GID")
@@ -56,18 +55,16 @@ class SheetsClient:
         self.ws = _open_ws()
         self._header = [h.strip() for h in (self.ws.row_values(1) or [])]
         if not self._header:
-            self._header = ["Date","Type","Unit","Category","Repair","Details","Vendor","Total",
-                            "Paid By","Paid?","Reported By","Status","Notes"]
+            self._header = ["Date","Type","Unit","Category","Repair","Details","Vendor","Total","Paid By","Paid?","Reported By","Status","Notes"]
             self.ws.update("A1", [self._header])
         self._col_idx: Dict[str, int] = {name: i for i, name in enumerate(self._header) if name}
 
     def append_repair_row(self, row: List[str]) -> int:
-        """Вставляет строку СРАЗУ ПОД ШАПКУ. Возвращает индекс вставки (обычно 2)."""
+        """Вставляет строку сразу под шапку. Возвращает индекс вставки (обычно 2)."""
         data = dict(zip(KNOWN_FIELDS, row + [""] * max(0, len(KNOWN_FIELDS) - len(row))))
         out = ["" for _ in range(len(self._header))]
         for name, idx in self._col_idx.items():
             if name in data:
                 out[idx] = data[name]
-        # ключевое изменение: insert_row вместо append_row
         self.ws.insert_row(out, index=2, value_input_option="USER_ENTERED")
         return 2

@@ -24,10 +24,8 @@ def reply_kb(buttons: List[str]) -> ReplyKeyboardMarkup:
 def _hydrate_from_store(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ss = StateStore()
     saved = None
-    try:
-        saved = ss.get(update.effective_chat.id)
-    except Exception:
-        pass
+    try: saved = ss.get(update.effective_chat.id)
+    except Exception: pass
     if isinstance(saved, tuple) and len(saved) == 2:
         state, form = saved
     elif isinstance(saved, dict):
@@ -61,10 +59,8 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
-    if text == CANCEL:
-        return await cancel(update, context)
-    if text == BACK:
-        return await go_back(update, context)
+    if text == CANCEL: return await cancel(update, context)
+    if text == BACK:   return await go_back(update, context)
 
     state = context.user_data.get("state","DATE")
     form = context.user_data.get("form", {})
@@ -102,7 +98,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if state == "TYPE":
-        # принимаем любое значение типом
+        # принимаем любой текст как тип
         if text:
             form["Type"] = text
             context.user_data["form"] = form
@@ -216,14 +212,12 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await show_confirm(update, context)
 
     if state == "CONFIRM":
-        if text.lower() == "save":
-            return await do_save(update, context)
+        if text.lower() == "save":  return await do_save(update, context)
         if text.lower() == "edit":
             context.user_data["state"] = "DATE"
             await update.message.reply_text("Editing. Let's start again from Date.")
             return await ask_date(update, context)
-        if text.lower() == "cancel":
-            return await cancel(update, context)
+        if text.lower() == "cancel": return await cancel(update, context)
         await update.message.reply_text("Use buttons: Save, Edit, or Cancel.")
         return
 
@@ -332,7 +326,7 @@ async def go_back(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def persist_state(update: Update, context: ContextTypes.DEFAULT_TYPE, new_state: str):
     StateStore().set(update.effective_chat.id, new_state, context.user_data.get("form", {}))
 
-# --- callbacks + save ---
+# callbacks + save
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _hydrate_from_store(update, context)
     q = update.callback_query
@@ -365,10 +359,8 @@ async def do_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
     miss = [k for k in required if not f.get(k)]
     if miss:
         msg = "Missing fields: " + ", ".join(miss)
-        if getattr(update, "callback_query", None):
-            await update.callback_query.message.reply_text(msg)
-        else:
-            await update.message.reply_text(msg)
+        if getattr(update, "callback_query", None): await update.callback_query.message.reply_text(msg)
+        else: await update.message.reply_text(msg)
         return
 
     row = [
@@ -378,18 +370,16 @@ async def do_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f.get("Notes",""), "", f"{update.update_id}|{update.effective_chat.id}:{getattr(update.effective_message,'message_id','0')}",
         datetime.utcnow().isoformat(timespec="seconds")+"Z",
     ]
+
     try:
-        SheetsClient().append_repair_row(row)
+        row_index = SheetsClient().append_repair_row(row)
     except Exception as e:
         txt = f"Sheets error: {type(e).__name__}: {e}"
-        if getattr(update, "callback_query", None):
-            await update.callback_query.message.reply_text(txt)
-        else:
-            await update.message.reply_text(txt)
+        if getattr(update, "callback_query", None): await update.callback_query.message.reply_text(txt)
+        else: await update.message.reply_text(txt)
         return
 
     StateStore().clear(update.effective_chat.id); context.user_data.clear()
-    if getattr(update, "callback_query", None):
-        await update.callback_query.message.reply_text("Saved ✅")
-    else:
-        await update.message.reply_text("Saved ✅")
+    msg_ok = f"Saved ✅ (row {row_index})"
+    if getattr(update, "callback_query", None): await update.callback_query.message.reply_text(msg_ok)
+    else: await update.message.reply_text(msg_ok)

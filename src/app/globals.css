@@ -342,3 +342,25 @@
     border-bottom: none;
   }
 }
+
+.tracking-marker {
+  display: flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid white;
+  border-radius: 9999px;
+  background: #ff3038;
+  color: white;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow:
+    0 2px 8px rgb(0 0 0 / 45%),
+    0 0 0 2px rgb(255 48 56 / 25%);
+}
+
+.tracking-marker-trailer {
+  background: #c81e2a;
+}

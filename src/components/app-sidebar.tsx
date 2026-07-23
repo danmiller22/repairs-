@@ -36,6 +36,7 @@ import {
   Check,
   ChevronsUpDown,
   ClipboardList,
+  Info,
   MapPinned,
   LayoutDashboard,
   Loader2,
@@ -55,7 +56,10 @@ import { createNewOrganization } from '@/features/team/Actions/createNewOrganiza
 import type { PlanFeatures } from '@/lib/features'
 import { useTheme } from '@/components/theme-provider'
 import { useServiceType } from '@/components/service-type-context'
-import { NotificationBell, NotificationPanel } from '@/features/notifications/Components/NotificationPanel'
+import {
+  NotificationBell,
+  NotificationPanel,
+} from '@/features/notifications/Components/NotificationPanel'
 
 type OrgInfo = { id: string; name: string; role: string }
 
@@ -97,9 +101,24 @@ export function AppSidebar({
   const canAccess = (subject: string) => !visibleSubjects || visibleSubjects.includes(subject)
 
   const workshopItems = [
-    { titleKey: isMarine ? 'sidebar.vessels' as const : 'sidebar.vehicles' as const, url: '/vehicles', icon: isMarine ? Ship : Truck, subject: 'vehicles' },
-    { titleKey: 'sidebar.tracking' as const, url: '/tracking', icon: MapPinned, subject: 'vehicles' },
-    { titleKey: 'sidebar.workOrders' as const, url: '/work-orders', icon: ClipboardList, subject: 'work_orders' },
+    {
+      titleKey: isMarine ? ('sidebar.vessels' as const) : ('sidebar.vehicles' as const),
+      url: '/vehicles',
+      icon: isMarine ? Ship : Truck,
+      subject: 'vehicles',
+    },
+    {
+      titleKey: 'sidebar.tracking' as const,
+      url: '/tracking',
+      icon: MapPinned,
+      subject: 'vehicles',
+    },
+    {
+      titleKey: 'sidebar.workOrders' as const,
+      url: '/work-orders',
+      icon: ClipboardList,
+      subject: 'work_orders',
+    },
     { titleKey: 'sidebar.billing' as const, url: '/billing', icon: Receipt, subject: 'billing' },
   ].filter((item) => canAccess(item.subject))
 
@@ -107,7 +126,9 @@ export function AppSidebar({
     if (isMobile) setOpenMobile(false)
   }
 
-  const renderNavGroup = (items: { titleKey: string; url: string; icon: React.ComponentType<{ className?: string }> }[]) =>
+  const renderNavGroup = (
+    items: { titleKey: string; url: string; icon: React.ComponentType<{ className?: string }> }[]
+  ) =>
     items.map((item) => {
       const isActive = pathname === item.url || (item.url !== '/' && pathname.startsWith(item.url))
       return (
@@ -240,9 +261,7 @@ export function AppSidebar({
         {workshopItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel>{t('sidebar.workshop')}</SidebarGroupLabel>
-            <SidebarMenu className="gap-2">
-              {renderNavGroup(workshopItems)}
-            </SidebarMenu>
+            <SidebarMenu className="gap-2">{renderNavGroup(workshopItems)}</SidebarMenu>
           </SidebarGroup>
         )}
 
@@ -261,6 +280,19 @@ export function AppSidebar({
             </SidebarMenu>
           </SidebarGroup>
         )}
+
+        <SidebarGroup>
+          <SidebarMenu className="gap-2">
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname.startsWith('/about')}>
+                <Link href="/about" className="font-medium" onClick={closeMobileSidebar}>
+                  <Info className="size-4" />
+                  About
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
 
         {isSuperAdmin && (
           <SidebarGroup>

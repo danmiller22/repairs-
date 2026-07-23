@@ -2,8 +2,19 @@
 
 import { useEffect, useMemo } from 'react'
 import L, { type LatLngBoundsExpression } from 'leaflet'
-import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
+import { LayersControl, MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
 import type { TrackingAsset } from '../types'
+
+function formatDwell(value: string | null) {
+  if (!value) return '—'
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60_000))
+  const days = Math.floor(minutes / 1440)
+  const hours = Math.floor((minutes % 1440) / 60)
+  const mins = minutes % 60
+  return [days ? `${days}d` : '', hours ? `${hours}h` : '', !days && mins ? `${mins}m` : '']
+    .filter(Boolean)
+    .join(' ')
+}
 
 function FitAssets({ assets }: { assets: TrackingAsset[] }) {
   const map = useMap()
@@ -54,10 +65,20 @@ export default function TrackingMapInner({ assets }: { assets: TrackingAsset[] }
         scrollWheelZoom
         className="h-full min-h-[360px] w-full"
       >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
-          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <LayersControl position="topright">
+          <LayersControl.BaseLayer checked name="Map">
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+              url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+          </LayersControl.BaseLayer>
+          <LayersControl.BaseLayer name="Satellite">
+            <TileLayer
+              attribution="Tiles &copy; Esri"
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+            />
+          </LayersControl.BaseLayer>
+        </LayersControl>
         <FitAssets assets={locatedAssets} />
         {locatedAssets.map((asset) => (
           <Marker
@@ -72,6 +93,19 @@ export default function TrackingMapInner({ assets }: { assets: TrackingAsset[] }
                 {asset.year} {asset.make} {asset.model}
                 <br />
                 <span>{asset.trackingAddress || 'Location available'}</span>
+                {asset.assetType === 'trailer' && (
+                  <>
+                    <br />
+                    <span>
+                      At location: {formatDwell(asset.trackingStoppedSince)} ·{' '}
+                      {asset.trackingCargoStatus === 'loaded'
+                        ? 'Loaded'
+                        : asset.trackingCargoStatus === 'empty'
+                          ? 'Empty'
+                          : 'Load unknown'}
+                    </span>
+                  </>
+                )}
               </div>
             </Popup>
           </Marker>

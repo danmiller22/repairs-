@@ -15,6 +15,8 @@ export type TrackingAsset = {
   trackingStatus: string | null
   trackingAddress: string | null
   trackingLastSeenAt: string | null
+  trackingStoppedSince: string | null
+  trackingCargoStatus: string | null
 }
 
 export type TrackingConnection = {

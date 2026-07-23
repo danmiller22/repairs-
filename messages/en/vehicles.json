@@ -3,13 +3,13 @@
     "active": "Active",
     "archived": "Archived",
     "searchPlaceholder": "Search by plate, make, model, VIN...",
-    "addVehicle": "Add Vehicle",
+    "addVehicle": "Add Unit",
     "emptySearch": "No vehicles match your search.",
     "emptyArchived": "No archived vehicles.",
     "empty": "No vehicles yet.",
     "table": {
-      "plate": "Plate",
-      "vehicle": "Vehicle",
+      "plate": "Unit Number",
+      "vehicle": "Equipment",
       "customer": "Customer",
       "mileage": "Mileage",
       "mileageMarine": "Engine Hours",
@@ -273,8 +273,8 @@
     }
   },
   "form": {
-    "editTitle": "Edit Vehicle",
-    "addTitle": "Add New Vehicle",
+    "editTitle": "Edit Unit",
+    "addTitle": "Add New Unit",
     "photo": "Photo",
     "clickToUpload": "Click to upload a photo",
     "imageFormats": "JPEG, PNG, WebP up to 5MB",
@@ -293,7 +293,7 @@
     "year": "Year *",
     "mileage": "Mileage",
     "vin": "VIN",
-    "licensePlate": "License Plate",
+    "licensePlate": "Unit Number",
     "color": "Color",
     "fuelType": "Fuel Type",
     "gasoline": "Gasoline",
@@ -316,8 +316,8 @@
     "twoStroke": "Two-Stroke",
     "vinMarine": "HIN",
     "licensePlateMarine": "Registration Number",
-    "vehicleUpdated": "Vehicle updated",
-    "vehicleAdded": "Vehicle added",
+    "vehicleUpdated": "Unit updated",
+    "vehicleAdded": "Unit added",
     "saveError": "Failed to save vehicle"
   },
   "archiveDialog": {

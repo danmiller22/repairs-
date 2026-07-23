@@ -27,6 +27,7 @@ export default async function TrackingPage() {
     ...asset,
     assetType: asset.assetType === 'trailer' ? 'trailer' : 'truck',
     trackingLastSeenAt: asset.trackingLastSeenAt?.toISOString() ?? null,
+    trackingStoppedSince: asset.trackingStoppedSince?.toISOString() ?? null,
   }))
   const connections: TrackingConnection[] =
     connectionResult.success && connectionResult.data ? connectionResult.data : []

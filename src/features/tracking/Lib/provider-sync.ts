@@ -1,8 +1,10 @@
 import 'server-only'
 
 import { XMLParser } from 'fast-xml-parser'
+import { CompactEncrypt, importJWK } from 'jose'
 import { db } from '@/lib/db'
 import type {
+  PremierCredentials,
   SamsaraCredentials,
   TrackingProviderId,
   XtraLeaseCredentials,
@@ -23,6 +25,9 @@ type NormalizedTrackingUnit = {
   status: string
   address: string | null
   lastSeenAt: Date | null
+  dwellSince: Date | null
+  cargoStatus: 'empty' | 'loaded' | 'unknown'
+  mileage: number | null
 }
 
 type SamsaraVehicle = {
@@ -151,6 +156,9 @@ async function fetchSamsaraUnits(
               : 'stopped',
         address: point?.reverseGeo?.formattedLocation?.trim() || null,
         lastSeenAt: safeDate(rawLocation?.gps?.at(-1)?.time || point?.time || rawLocation?.time),
+        dwellSince: null,
+        cargoStatus: 'unknown',
+        mileage: null,
       },
     ]
   })
@@ -268,9 +276,212 @@ async function fetchXtraLeaseUnits(
                 : 'stopped',
         address: formatSkyBitzAddress(position.landmark),
         lastSeenAt: safeDate(position.messagereceivedtime || position.time),
+        dwellSince: null,
+        cargoStatus: 'unknown',
+        mileage: null,
       },
     ]
   })
+}
+
+type PremierAsset = {
+  id?: string
+  name?: string
+  active?: boolean
+  type?: string
+  year?: number | string
+  vin?: string
+  make?: string
+  model?: string
+  cargoStatus?: { cargoLoaded?: boolean } | string
+  location?: {
+    lat?: number
+    lng?: number
+    locationLastReported?: string
+  }
+  address?: {
+    line1?: string
+    city?: string
+    stateOrProvince?: string
+    postalCode?: string
+  }
+  direction?: string | number
+  distanceDriven?: number
+  eventTime?: string
+  odometer?: number
+  speed?: number
+  status?: string
+  statusStartDate?: string
+}
+
+type PremierAssetsPage = {
+  content?: PremierAsset[]
+  total?: number
+}
+
+const PREMIER_AUTH_URL = 'https://auth-service.spireon.com'
+const PREMIER_ASSETS_URL = 'https://ati-avs-api.spireon.com/api/v1/assets'
+
+function compassHeading(value: unknown) {
+  if (typeof value === 'number') return safeNumber(value)
+  const headings: Record<string, number> = {
+    N: 0,
+    NE: 45,
+    E: 90,
+    SE: 135,
+    S: 180,
+    SW: 225,
+    W: 270,
+    NW: 315,
+  }
+  return (
+    headings[
+      String(value || '')
+        .trim()
+        .toUpperCase()
+    ] ?? null
+  )
+}
+
+function formatPremierAddress(address: PremierAsset['address']) {
+  if (!address) return null
+  const locality = [address.city, address.stateOrProvince, address.postalCode]
+    .filter(Boolean)
+    .join(', ')
+  return [address.line1, locality].filter(Boolean).join(', ') || null
+}
+
+async function getPremierToken(credentials: PremierCredentials) {
+  const jwkResponse = await fetch(`${PREMIER_AUTH_URL}/rest/jwe/latest-jwk`, {
+    cache: 'no-store',
+    signal: AbortSignal.timeout(20_000),
+  })
+  if (!jwkResponse.ok) {
+    throw new Error(`Premier/Spireon authentication setup failed (${jwkResponse.status})`)
+  }
+
+  const jwkDto = (await jwkResponse.json()) as { id?: string; jwk?: string }
+  if (!jwkDto.id || !jwkDto.jwk) {
+    throw new Error('Premier/Spireon returned an invalid encryption key')
+  }
+
+  const key = await importJWK(JSON.parse(jwkDto.jwk), 'RSA-OAEP-256')
+  const encryptedCredentials = await new CompactEncrypt(
+    new TextEncoder().encode(
+      JSON.stringify({ username: credentials.username, password: credentials.password })
+    )
+  )
+    .setProtectedHeader({ alg: 'RSA-OAEP-256', enc: 'A256GCM', kid: jwkDto.id })
+    .encrypt(key)
+
+  const response = await fetch(`${PREMIER_AUTH_URL}/rest/loginRequest?clientId=atiWeb`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: encryptedCredentials,
+    cache: 'no-store',
+    signal: AbortSignal.timeout(30_000),
+  })
+  const payload = (await response.json().catch(() => null)) as {
+    authResult?: { token?: string; scope?: string }
+    challenge?: string | null
+  } | null
+
+  if (!response.ok || !payload?.authResult?.token) {
+    if (response.status === 401 || response.status === 403) {
+      throw new Error('Premier/Spireon rejected the username or password')
+    }
+    throw new Error(`Premier/Spireon sign-in failed (${response.status})`)
+  }
+  return payload.authResult.token
+}
+
+async function fetchPremierUnits(
+  credentials: PremierCredentials
+): Promise<NormalizedTrackingUnit[]> {
+  const token = await getPremierToken(credentials)
+  const assets: PremierAsset[] = []
+  const limit = 250
+
+  for (let offset = 0; offset < 10_000; offset += limit) {
+    const url = new URL(PREMIER_ASSETS_URL)
+    url.searchParams.set('limit', String(limit))
+    url.searchParams.set('offset', String(offset))
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(45_000),
+    })
+    if (!response.ok) {
+      throw new Error(`Premier/Spireon asset request failed (${response.status})`)
+    }
+
+    const page = (await response.json()) as PremierAssetsPage
+    const content = page.content ?? []
+    assets.push(...content)
+    if (content.length < limit || assets.length >= (page.total ?? 0)) break
+  }
+
+  return assets.flatMap((asset) => {
+    const externalId = asset.name?.trim() || asset.id?.trim()
+    if (!externalId) return []
+    const latitude = safeNumber(asset.location?.lat)
+    const longitude = safeNumber(asset.location?.lng)
+    const speed = safeNumber(asset.speed)
+    const rawStatus = asset.status?.trim().toLowerCase()
+    const status =
+      latitude === null || longitude === null
+        ? 'offline'
+        : rawStatus === 'moving' || (speed ?? 0) > 2
+          ? 'moving'
+          : rawStatus === 'idle'
+            ? 'idle'
+            : 'stopped'
+    const cargoLoaded =
+      typeof asset.cargoStatus === 'object' ? asset.cargoStatus.cargoLoaded : undefined
+    const year = safeNumber(asset.year)
+    const odometerMeters = safeNumber(asset.odometer ?? asset.distanceDriven)
+
+    return [
+      {
+        externalId,
+        assetType: 'trailer',
+        make: asset.make?.trim() || 'Premier Trailer',
+        model: asset.model?.trim() || asset.type?.trim() || 'Semi-Trailer',
+        year: year && year >= 1900 && year <= 2200 ? Math.round(year) : new Date().getFullYear(),
+        vin: asset.vin?.trim() || null,
+        licensePlate: externalId,
+        latitude,
+        longitude,
+        speed,
+        heading: compassHeading(asset.direction),
+        status,
+        address: formatPremierAddress(asset.address),
+        lastSeenAt: safeDate(asset.location?.locationLastReported || asset.eventTime),
+        dwellSince: status === 'moving' ? null : safeDate(asset.statusStartDate),
+        cargoStatus: cargoLoaded === true ? 'loaded' : cargoLoaded === false ? 'empty' : 'unknown',
+        mileage:
+          odometerMeters === null ? null : Math.max(0, Math.round(odometerMeters / 1609.344)),
+      },
+    ]
+  })
+}
+
+function sameStopLocation(
+  existing: { trackingLatitude: number | null; trackingLongitude: number | null },
+  unit: NormalizedTrackingUnit
+) {
+  if (
+    existing.trackingLatitude === null ||
+    existing.trackingLongitude === null ||
+    unit.latitude === null ||
+    unit.longitude === null
+  ) {
+    return false
+  }
+  return (
+    Math.abs(existing.trackingLatitude - unit.latitude) < 0.003 &&
+    Math.abs(existing.trackingLongitude - unit.longitude) < 0.003
+  )
 }
 
 async function persistUnits(
@@ -287,6 +498,10 @@ async function persistUnits(
       licensePlate: true,
       trackingProvider: true,
       trackingExternalId: true,
+      trackingLatitude: true,
+      trackingLongitude: true,
+      trackingStatus: true,
+      trackingStoppedSince: true,
     },
   })
 
@@ -311,6 +526,16 @@ async function persistUnits(
       byExternalId.get(unit.externalId) ||
       (unit.vin ? byVin.get(unit.vin.toUpperCase()) : undefined) ||
       (unit.licensePlate ? byPlate.get(unit.licensePlate.toUpperCase()) : undefined)
+    const isStopped = unit.status === 'stopped' || unit.status === 'idle'
+    const trackingStoppedSince = !isStopped
+      ? null
+      : unit.dwellSince ||
+        (match &&
+        (match.trackingStatus === 'stopped' || match.trackingStatus === 'idle') &&
+        match.trackingStoppedSince &&
+        sameStopLocation(match, unit)
+          ? match.trackingStoppedSince
+          : new Date())
     const trackingData = {
       assetType: unit.assetType,
       trackingProvider: provider,
@@ -322,12 +547,22 @@ async function persistUnits(
       trackingStatus: unit.status,
       trackingAddress: unit.address,
       trackingLastSeenAt: unit.lastSeenAt,
+      trackingStoppedSince,
+      trackingCargoStatus: unit.cargoStatus,
     }
 
     if (match) {
       return db.vehicle.update({
         where: { id: match.id },
-        data: trackingData,
+        data: {
+          ...trackingData,
+          make: unit.make,
+          model: unit.model,
+          year: unit.year,
+          vin: unit.vin ?? undefined,
+          licensePlate: unit.licensePlate ?? undefined,
+          mileage: unit.mileage ?? undefined,
+        },
       })
     }
 
@@ -339,6 +574,7 @@ async function persistUnits(
         year: unit.year,
         vin: unit.vin,
         licensePlate: unit.licensePlate,
+        mileage: unit.mileage ?? 0,
         fuelType: unit.assetType === 'truck' ? 'diesel' : 'other',
         userId,
         organizationId,
@@ -352,14 +588,16 @@ async function persistUnits(
 
 export async function syncProviderUnits(args: {
   provider: TrackingProviderId
-  credentials: SamsaraCredentials | XtraLeaseCredentials
+  credentials: SamsaraCredentials | XtraLeaseCredentials | PremierCredentials
   organizationId: string
   userId: string
 }) {
   const units =
     args.provider === 'samsara'
       ? await fetchSamsaraUnits(args.credentials as SamsaraCredentials)
-      : await fetchXtraLeaseUnits(args.credentials as XtraLeaseCredentials)
+      : args.provider === 'xtralease'
+        ? await fetchXtraLeaseUnits(args.credentials as XtraLeaseCredentials)
+        : await fetchPremierUnits(args.credentials as PremierCredentials)
 
   return persistUnits(args.provider, args.organizationId, args.userId, units)
 }

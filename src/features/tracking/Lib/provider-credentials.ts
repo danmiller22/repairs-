@@ -3,7 +3,7 @@ import 'server-only'
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto'
 import { db } from '@/lib/db'
 
-export type TrackingProviderId = 'samsara' | 'xtralease'
+export type TrackingProviderId = 'samsara' | 'xtralease' | 'premier'
 
 export type SamsaraCredentials = {
   apiKey: string
@@ -16,7 +16,12 @@ export type XtraLeaseCredentials = {
   apiVersion: string
 }
 
-export type TrackingCredentials = SamsaraCredentials | XtraLeaseCredentials
+export type PremierCredentials = {
+  username: string
+  password: string
+}
+
+export type TrackingCredentials = SamsaraCredentials | XtraLeaseCredentials | PremierCredentials
 
 export type TrackingSyncMetadata = {
   lastSyncedAt: string | null
@@ -72,13 +77,23 @@ function credentialsFromEnvironment(provider: TrackingProviderId): TrackingCrede
     return process.env.SAMSARA_API_KEY ? { apiKey: process.env.SAMSARA_API_KEY } : null
   }
 
-  if (!process.env.XTRA_SKYBITZ_USERNAME || !process.env.XTRA_SKYBITZ_PASSWORD) return null
-  return {
-    username: process.env.XTRA_SKYBITZ_USERNAME,
-    password: process.env.XTRA_SKYBITZ_PASSWORD,
-    serviceUrl: process.env.XTRA_SKYBITZ_SERVICE_URL || 'https://xml.skybitz.com/',
-    apiVersion: process.env.XTRA_SKYBITZ_API_VERSION || '2.76',
+  if (provider === 'premier') {
+    if (!process.env.PREMIER_SPIREON_USERNAME || !process.env.PREMIER_SPIREON_PASSWORD) return null
+    return {
+      username: process.env.PREMIER_SPIREON_USERNAME,
+      password: process.env.PREMIER_SPIREON_PASSWORD,
+    }
   }
+
+  if (process.env.XTRA_SKYBITZ_USERNAME && process.env.XTRA_SKYBITZ_PASSWORD) {
+    return {
+      username: process.env.XTRA_SKYBITZ_USERNAME,
+      password: process.env.XTRA_SKYBITZ_PASSWORD,
+      serviceUrl: process.env.XTRA_SKYBITZ_SERVICE_URL || 'https://xml.skybitz.com/',
+      apiVersion: process.env.XTRA_SKYBITZ_API_VERSION || '2.76',
+    }
+  }
+  return null
 }
 
 export async function getTrackingCredentials(organizationId: string, provider: TrackingProviderId) {

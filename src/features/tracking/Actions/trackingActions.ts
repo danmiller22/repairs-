@@ -22,9 +22,10 @@ const manualLocationSchema = z.object({
   speed: z.coerce.number().min(0).max(200).optional(),
   status: z.enum(['moving', 'stopped', 'idle', 'maintenance', 'offline']),
   address: z.string().trim().max(250).optional(),
+  cargoStatus: z.enum(['empty', 'loaded', 'unknown']).optional(),
 })
 
-const providerSchema = z.enum(['samsara', 'xtralease'])
+const providerSchema = z.enum(['samsara', 'xtralease', 'premier'])
 
 const saveConnectionSchema = z.discriminatedUnion('provider', [
   z.object({
@@ -46,6 +47,11 @@ const saveConnectionSchema = z.discriminatedUnion('provider', [
       .string()
       .trim()
       .regex(/^\d+\.\d+$/),
+  }),
+  z.object({
+    provider: z.literal('premier'),
+    username: z.string().trim().email(),
+    password: z.string().min(8),
   }),
 ])
 
@@ -71,6 +77,8 @@ export async function getTrackingAssets() {
           trackingStatus: true,
           trackingAddress: true,
           trackingLastSeenAt: true,
+          trackingStoppedSince: true,
+          trackingCargoStatus: true,
         },
         orderBy: [{ assetType: 'asc' }, { licensePlate: 'asc' }, { updatedAt: 'desc' }],
       })
@@ -95,6 +103,9 @@ export async function updateManualTrackingLocation(input: unknown) {
           trackingStatus: data.status,
           trackingAddress: data.address || null,
           trackingLastSeenAt: new Date(),
+          trackingStoppedSince:
+            data.status === 'stopped' || data.status === 'idle' ? new Date() : null,
+          trackingCargoStatus: data.cargoStatus || 'unknown',
         },
       })
 
@@ -120,7 +131,7 @@ export async function updateManualTrackingLocation(input: unknown) {
 export async function getTrackingConnections() {
   return withAuth(
     async ({ organizationId }) => {
-      const providerIds: TrackingProviderId[] = ['samsara', 'xtralease']
+      const providerIds: TrackingProviderId[] = ['samsara', 'xtralease', 'premier']
       const configured = await Promise.all(
         providerIds.map(async (provider) => {
           const [connection, metadata] = await Promise.all([
@@ -134,6 +145,7 @@ export async function getTrackingConnections() {
       const definitions = {
         samsara: { name: 'Samsara', scope: 'Trucks' },
         xtralease: { name: 'XTRA Lease', scope: 'Trailers via SkyBitz' },
+        premier: { name: 'Premier Trailer', scope: 'Trailers via FleetLocate' },
       } as const
 
       const connections: TrackingConnection[] = configured.map(
@@ -146,18 +158,6 @@ export async function getTrackingConnections() {
           ...metadata,
         })
       )
-
-      connections.push({
-        id: 'premier',
-        name: 'Premier Trailer',
-        scope: 'Trailers',
-        configured: false,
-        available: false,
-        source: null,
-        lastSyncedAt: null,
-        assetCount: 0,
-        error: null,
-      })
 
       return connections
     },
@@ -174,12 +174,17 @@ export async function saveTrackingProviderConnection(input: unknown) {
       const credentials =
         data.provider === 'samsara'
           ? { apiKey: data.apiKey }
-          : {
-              username: data.username,
-              password: data.password,
-              serviceUrl: data.serviceUrl,
-              apiVersion: data.apiVersion,
-            }
+          : data.provider === 'xtralease'
+            ? {
+                username: data.username,
+                password: data.password,
+                serviceUrl: data.serviceUrl,
+                apiVersion: data.apiVersion,
+              }
+            : {
+                username: data.username,
+                password: data.password,
+              }
 
       await saveTrackingCredentials(organizationId, userId, data.provider, credentials)
       await saveTrackingSyncMetadata(organizationId, userId, data.provider, {

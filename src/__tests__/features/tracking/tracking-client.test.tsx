@@ -37,6 +37,8 @@ const assets: TrackingAsset[] = [
     trackingStatus: 'moving',
     trackingAddress: 'Chicago, IL',
     trackingLastSeenAt: new Date().toISOString(),
+    trackingStoppedSince: null,
+    trackingCargoStatus: null,
   },
   {
     id: 'trailer-1',
@@ -55,6 +57,8 @@ const assets: TrackingAsset[] = [
     trackingStatus: 'stopped',
     trackingAddress: 'Joliet, IL',
     trackingLastSeenAt: new Date().toISOString(),
+    trackingStoppedSince: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    trackingCargoStatus: 'loaded',
   },
 ]
 
@@ -85,11 +89,11 @@ const connections: TrackingConnection[] = [
     id: 'premier',
     name: 'Premier Trailer',
     scope: 'Trailers',
-    configured: false,
-    available: false,
-    source: null,
-    lastSyncedAt: null,
-    assetCount: 0,
+    configured: true,
+    available: true,
+    source: 'environment',
+    lastSyncedAt: '2026-07-23T21:00:00.000Z',
+    assetCount: 25,
     error: null,
   },
 ]

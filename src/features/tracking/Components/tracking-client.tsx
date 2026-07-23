@@ -57,7 +57,7 @@ import {
 import type { TrackingAsset, TrackingConnection } from '../types'
 import { TrackingMap } from './tracking-map-dynamic'
 
-type ConfigurableProvider = 'samsara' | 'xtralease'
+type ConfigurableProvider = 'samsara' | 'xtralease' | 'premier'
 
 const statusStyles: Record<string, string> = {
   moving: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-500',
@@ -75,6 +75,24 @@ function formatLastSeen(value: string | null) {
   if (diffMinutes < 60) return `${diffMinutes}m ago`
   if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h ago`
   return date.toLocaleDateString()
+}
+
+function formatDwell(value: string | null, status: string | null) {
+  if (status === 'moving') return 'In motion'
+  if (!value) return '—'
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60_000))
+  const days = Math.floor(minutes / 1440)
+  const hours = Math.floor((minutes % 1440) / 60)
+  const mins = minutes % 60
+  if (days) return `${days}d ${hours}h`
+  if (hours) return `${hours}h ${mins}m`
+  return `${mins}m`
+}
+
+function providerName(provider: ConfigurableProvider) {
+  if (provider === 'samsara') return 'Samsara'
+  if (provider === 'xtralease') return 'XTRA Lease'
+  return 'Premier Trailer'
 }
 
 export function TrackingClient({
@@ -120,6 +138,7 @@ export function TrackingClient({
         speed: formData.get('speed') || undefined,
         status: formData.get('status'),
         address: formData.get('address') || undefined,
+        cargoStatus: formData.get('cargoStatus') || undefined,
       })
 
       if (result.success) {
@@ -137,7 +156,7 @@ export function TrackingClient({
     startTransition(async () => {
       const result = await syncTrackingProvider(provider)
       if (result.success && result.data) {
-        const name = provider === 'samsara' ? 'Samsara' : 'XTRA Lease'
+        const name = providerName(provider)
         toast.success(
           result.data.skipped
             ? `${name} is already current. XTRA sync is limited to once every 30 minutes.`
@@ -162,16 +181,22 @@ export function TrackingClient({
               provider,
               apiKey: formData.get('apiKey'),
             })
-          : await saveTrackingProviderConnection({
-              provider,
-              username: formData.get('username'),
-              password: formData.get('password'),
-              serviceUrl: formData.get('serviceUrl'),
-              apiVersion: formData.get('apiVersion'),
-            })
+          : provider === 'xtralease'
+            ? await saveTrackingProviderConnection({
+                provider,
+                username: formData.get('username'),
+                password: formData.get('password'),
+                serviceUrl: formData.get('serviceUrl'),
+                apiVersion: formData.get('apiVersion'),
+              })
+            : await saveTrackingProviderConnection({
+                provider,
+                username: formData.get('username'),
+                password: formData.get('password'),
+              })
 
       if (result.success) {
-        toast.success(`${provider === 'samsara' ? 'Samsara' : 'XTRA Lease'} connection saved`)
+        toast.success(`${providerName(provider)} connection saved`)
         setConfiguring(null)
         router.refresh()
       } else {
@@ -187,7 +212,7 @@ export function TrackingClient({
       if (!connection.lastSyncedAt) return true
       return Date.now() - new Date(connection.lastSyncedAt).getTime() >= 30 * 60 * 1000
     })
-    if (!staleConnection || staleConnection.id === 'premier') return
+    if (!staleConnection) return
 
     autoSyncAttempted.current = true
     const timeout = window.setTimeout(
@@ -287,7 +312,7 @@ export function TrackingClient({
                         ? 'Connected'
                         : provider.available
                           ? 'Not configured'
-                          : 'Coming soon'}
+                          : 'Not configured'}
                   </Badge>
                 </div>
                 {provider.error ? (
@@ -379,7 +404,9 @@ export function TrackingClient({
                 <TableRow>
                   <TableHead>Unit</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Motion</TableHead>
+                  <TableHead>At location</TableHead>
+                  <TableHead>Load</TableHead>
                   <TableHead>Provider</TableHead>
                   <TableHead>Last location</TableHead>
                   <TableHead>Updated</TableHead>
@@ -389,7 +416,7 @@ export function TrackingClient({
               <TableBody>
                 {filteredAssets.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="h-32 text-center text-muted-foreground">
                       {assets.length === 0
                         ? 'No units yet. Add a truck or trailer in Fleet and it will appear here automatically.'
                         : 'No units match this filter.'}
@@ -428,6 +455,30 @@ export function TrackingClient({
                           >
                             {status}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-sm">
+                          {asset.assetType === 'trailer'
+                            ? formatDwell(asset.trackingStoppedSince, asset.trackingStatus)
+                            : '—'}
+                        </TableCell>
+                        <TableCell>
+                          {asset.assetType === 'trailer' ? (
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                'capitalize',
+                                asset.trackingCargoStatus === 'loaded'
+                                  ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-500'
+                                  : asset.trackingCargoStatus === 'empty'
+                                    ? 'border-blue-500/25 bg-blue-500/10 text-blue-500'
+                                    : 'text-muted-foreground'
+                              )}
+                            >
+                              {asset.trackingCargoStatus || 'unknown'}
+                            </Badge>
+                          ) : (
+                            '—'
+                          )}
                         </TableCell>
                         <TableCell className="capitalize">
                           {asset.trackingProvider || 'Not connected'}
@@ -545,6 +596,24 @@ export function TrackingClient({
                   placeholder="Chicago yard, I-80 near Joliet…"
                 />
               </div>
+              {editing.assetType === 'trailer' && (
+                <div className="space-y-2">
+                  <Label htmlFor="cargoStatus">Load status</Label>
+                  <Select
+                    name="cargoStatus"
+                    defaultValue={editing.trackingCargoStatus || 'unknown'}
+                  >
+                    <SelectTrigger id="cargoStatus">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="empty">Empty</SelectItem>
+                      <SelectItem value="loaded">Loaded</SelectItem>
+                      <SelectItem value="unknown">Unknown</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setEditing(null)}>
                   Cancel
@@ -580,9 +649,7 @@ export function TrackingClient({
                   <SelectContent>
                     <SelectItem value="samsara">Samsara</SelectItem>
                     <SelectItem value="xtralease">XTRA Lease / SkyBitz</SelectItem>
-                    <SelectItem value="premier" disabled>
-                      Premier Trailer — coming soon
-                    </SelectItem>
+                    <SelectItem value="premier">Premier Trailer / FleetLocate</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -602,7 +669,7 @@ export function TrackingClient({
                     The token needs Read Vehicles and Read Vehicle Statistics permissions.
                   </p>
                 </div>
-              ) : (
+              ) : configuring === 'xtralease' ? (
                 <>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
@@ -634,6 +701,35 @@ export function TrackingClient({
                     <Label htmlFor="apiVersion">API version</Label>
                     <Input id="apiVersion" name="apiVersion" defaultValue="2.76" required />
                   </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="username">FleetLocate username</Label>
+                      <Input
+                        id="username"
+                        name="username"
+                        type="email"
+                        autoComplete="off"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="password">FleetLocate password</Label>
+                      <Input
+                        id="password"
+                        name="password"
+                        type="password"
+                        autoComplete="new-password"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Premier trailers sync through Spireon FleetLocate, including GPS, dwell time and
+                    empty/loaded status.
+                  </p>
                 </>
               )}
 

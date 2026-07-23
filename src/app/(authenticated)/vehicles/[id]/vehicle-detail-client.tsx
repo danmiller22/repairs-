@@ -31,20 +31,20 @@ import { deleteNote, toggleNotePin } from '@/features/vehicles/Actions/noteActio
 import { toggleReminder, deleteReminder } from '@/features/vehicles/Actions/reminderActions'
 import { deleteFinding } from '@/features/vehicles/Actions/findingActions'
 import { createServiceRecord } from '@/features/vehicles/Actions/serviceActions'
-import { unarchiveVehicle } from '@/features/vehicles/Actions/unarchiveVehicle'
 import { deleteVehicle } from '@/features/vehicles/Actions/deleteVehicle'
 import {
   dismissMaintenance,
   undismissMaintenance,
 } from '@/features/vehicles/Actions/dismissMaintenance'
-import { ArchiveVehicleDialog } from '@/features/vehicles/Components/ArchiveVehicleDialog'
-import { aiSummarizeVehicleHistory, aiGetCommonIssues, aiClearMessage } from '@/features/ai/Actions/aiActions'
+import {
+  aiSummarizeVehicleHistory,
+  aiGetCommonIssues,
+  aiClearMessage,
+} from '@/features/ai/Actions/aiActions'
 import { AI_MESSAGE_TYPES } from '@/features/ai/constants'
 import { useFormatCurrency } from '@/components/currency-settings-context'
 import {
   AlertTriangle,
-  Archive,
-  ArchiveRestore,
   ArrowLeft,
   Bell,
   Truck,
@@ -73,7 +73,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
@@ -312,11 +311,12 @@ export function VehicleDetailClient({
     VehicleDetail['reminders'][number] | undefined
   >()
   const [showFindingForm, setShowFindingForm] = useState(false)
-  const [editingFinding, setEditingFinding] = useState<PaginatedFindings['records'][number] | undefined>()
+  const [editingFinding, setEditingFinding] = useState<
+    PaginatedFindings['records'][number] | undefined
+  >()
   const [reminderFilter, setReminderFilter] = useState<'active' | 'completed' | 'all'>('active')
   const [showImage, setShowImage] = useState(false)
   const [selectedNote, setSelectedNote] = useState<PaginatedNotes['records'][number] | null>(null)
-  const [showArchiveDialog, setShowArchiveDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showNewInspection, setShowNewInspection] = useState(false)
   const [isDismissPending, startDismissTransition] = useTransition()
@@ -325,7 +325,9 @@ export function VehicleDetailClient({
   const [activeAiPanel, setActiveAiPanel] = useState<'summary' | 'issues' | null>(null)
 
   const storedSummary = vehicle.aiMessages.find((m) => m.type === AI_MESSAGE_TYPES.SUMMARY)
-  const storedCommonIssues = vehicle.aiMessages.find((m) => m.type === AI_MESSAGE_TYPES.COMMON_ISSUES)
+  const storedCommonIssues = vehicle.aiMessages.find(
+    (m) => m.type === AI_MESSAGE_TYPES.COMMON_ISSUES
+  )
 
   const handleDismissMaintenance = () => {
     startDismissTransition(async () => {
@@ -438,16 +440,6 @@ export function VehicleDetailClient({
     }
   }
 
-  const handleUnarchive = async () => {
-    const result = await unarchiveVehicle(vehicle.id)
-    if (result.success) {
-      toast.success(t('vehicleUnarchived'))
-      router.refresh()
-    } else {
-      modal.open('error', 'Error', result.error || t('unarchiveError'))
-    }
-  }
-
   const handleAiSummary = async () => {
     setAiSummaryLoading(true)
     try {
@@ -506,23 +498,6 @@ export function VehicleDetailClient({
 
   return (
     <div className="space-y-4">
-      {/* Archived banner */}
-      {vehicle.isArchived && (
-        <div className="flex items-center justify-between rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
-          <div className="flex items-center gap-2 text-sm">
-            <Archive className="h-4 w-4 text-amber-600" />
-            <span className="font-medium text-amber-600">{t('vehicleArchived')}</span>
-            {vehicle.archiveReason && (
-              <span className="text-muted-foreground">&mdash; {vehicle.archiveReason}</span>
-            )}
-          </div>
-          <Button size="sm" variant="outline" onClick={handleUnarchive}>
-            <ArchiveRestore className="mr-1 h-3.5 w-3.5" />
-            {t('unarchive')}
-          </Button>
-        </div>
-      )}
-
       {/* Header */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -534,12 +509,10 @@ export function VehicleDetailClient({
             {t('backToVehicles')}
           </Link>
           <div className="flex items-center gap-2">
-            {!vehicle.isArchived && (
-              <Button variant="outline" size="sm" onClick={() => setShowEditForm(true)}>
-                <Pencil className="mr-1 h-3.5 w-3.5" />
-                {t('editVehicle')}
-              </Button>
-            )}
+            <Button variant="outline" size="sm" onClick={() => setShowEditForm(true)}>
+              <Pencil className="mr-1 h-3.5 w-3.5" />
+              {t('editVehicle')}
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={t('openMenu')}>
@@ -547,18 +520,6 @@ export function VehicleDetailClient({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {vehicle.isArchived ? (
-                  <DropdownMenuItem onClick={handleUnarchive}>
-                    <ArchiveRestore className="mr-2 h-4 w-4" />
-                    {t('unarchive')}
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem onClick={() => setShowArchiveDialog(true)}>
-                    <Archive className="mr-2 h-4 w-4" />
-                    {t('archive')}
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="text-destructive"
                   onClick={() => setShowDeleteDialog(true)}
@@ -663,7 +624,11 @@ export function VehicleDetailClient({
                     <div className="flex cursor-help items-center gap-1.5">
                       <TrendingUp className="h-3.5 w-3.5" />
                       <span className="text-xs">
-                        {isMarine ? t('predictedHours') : unitSystem === 'metric' ? t('predictedKm') : t('predictedMileage')}
+                        {isMarine
+                          ? t('predictedHours')
+                          : unitSystem === 'metric'
+                            ? t('predictedKm')
+                            : t('predictedMileage')}
                       </span>
                       <span className="font-semibold text-foreground">
                         ~{predictionData.predictedMileage.toLocaleString()}
@@ -890,7 +855,15 @@ export function VehicleDetailClient({
                                 <span className="font-medium">{w.title}</span>
                                 {(w.date || w.cost > 0) && (
                                   <span className="text-xs text-muted-foreground ml-2">
-                                    {[w.date, w.cost > 0 && new Intl.NumberFormat('en-US', { minimumFractionDigits: 0 }).format(w.cost)].filter(Boolean).join(' · ')}
+                                    {[
+                                      w.date,
+                                      w.cost > 0 &&
+                                        new Intl.NumberFormat('en-US', {
+                                          minimumFractionDigits: 0,
+                                        }).format(w.cost),
+                                    ]
+                                      .filter(Boolean)
+                                      .join(' · ')}
                                   </span>
                                 )}
                               </div>
@@ -910,7 +883,10 @@ export function VehicleDetailClient({
                               <div key={i}>
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm font-medium">{m.item}</span>
-                                  <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${urgencyColor[m.urgency] || urgencyColor.medium}`}>
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-[10px] px-1.5 py-0 ${urgencyColor[m.urgency] || urgencyColor.medium}`}
+                                  >
                                     {m.urgency}
                                   </Badge>
                                 </div>
@@ -931,7 +907,9 @@ export function VehicleDetailClient({
                             {summary.recurringIssues.map((issue, i) => (
                               <div key={i} className="text-sm">
                                 <span className="font-medium">{issue.title}</span>
-                                <p className="text-xs text-muted-foreground mt-0.5">{issue.description}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {issue.description}
+                                </p>
                               </div>
                             ))}
                           </div>
@@ -954,10 +932,14 @@ export function VehicleDetailClient({
           <div className="flex items-center justify-between border-b bg-muted/30 px-4 py-2.5">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
-              <h3 className="text-sm font-semibold">{t('commonIssuesTitle', { make: vehicle.make, model: vehicle.model })}</h3>
+              <h3 className="text-sm font-semibold">
+                {t('commonIssuesTitle', { make: vehicle.make, model: vehicle.model })}
+              </h3>
               {storedCommonIssues && (
                 <span className="text-[11px] text-muted-foreground">
-                  {t('aiSummaryUpdated', { date: formatDate(new Date(storedCommonIssues.updatedAt)) })}
+                  {t('aiSummaryUpdated', {
+                    date: formatDate(new Date(storedCommonIssues.updatedAt)),
+                  })}
                 </span>
               )}
             </div>
@@ -995,7 +977,13 @@ export function VehicleDetailClient({
               </div>
             ) : storedCommonIssues ? (
               (() => {
-                let issues: { title: string; description: string; cost: string; risk: string; severity?: number }[] = []
+                let issues: {
+                  title: string
+                  description: string
+                  cost: string
+                  risk: string
+                  severity?: number
+                }[] = []
                 try {
                   const raw = storedCommonIssues.content.replace(/^```json?\n?|\n?```$/g, '').trim()
                   issues = JSON.parse(raw)
@@ -1026,7 +1014,10 @@ export function VehicleDetailClient({
                   const sev = Math.max(1, Math.min(5, issue.severity ?? 3))
                   return (
                     <div key={i} className="flex gap-3 px-4 py-3">
-                      <div className="flex flex-col items-center gap-0.5 pt-1 cursor-help" title={severityLabel(sev)}>
+                      <div
+                        className="flex flex-col items-center gap-0.5 pt-1 cursor-help"
+                        title={severityLabel(sev)}
+                      >
                         {Array.from({ length: 5 }).map((_, j) => (
                           <div
                             key={j}
@@ -1037,12 +1028,17 @@ export function VehicleDetailClient({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold">{issue.title}</span>
-                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${riskColor[issue.risk] || riskColor.other}`}>
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] px-1.5 py-0 ${riskColor[issue.risk] || riskColor.other}`}
+                          >
                             {issue.risk}
                           </Badge>
                         </div>
                         <p className="text-sm text-muted-foreground mt-0.5">{issue.description}</p>
-                        <span className="text-xs font-medium text-foreground/70 mt-1 inline-block">{issue.cost}</span>
+                        <span className="text-xs font-medium text-foreground/70 mt-1 inline-block">
+                          {issue.cost}
+                        </span>
                       </div>
                     </div>
                   )
@@ -1432,7 +1428,12 @@ export function VehicleDetailClient({
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={t('openMenu')}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            aria-label={t('openMenu')}
+                          >
                             <MoreVertical className="h-3.5 w-3.5" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -1532,12 +1533,6 @@ export function VehicleDetailClient({
         templates={inspectionTemplates || []}
         preselectedVehicleId={vehicle.id}
       />
-      <ArchiveVehicleDialog
-        open={showArchiveDialog}
-        onOpenChange={setShowArchiveDialog}
-        vehicleId={vehicle.id}
-        vehicleName={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
-      />
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -1557,7 +1552,6 @@ export function VehicleDetailClient({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
 
       {/* Image lightbox */}
       {showImage && vehicle.imageUrl && (

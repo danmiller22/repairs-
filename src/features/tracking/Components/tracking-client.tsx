@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
@@ -90,6 +90,7 @@ export function TrackingClient({
   const [editing, setEditing] = useState<TrackingAsset | null>(null)
   const [configuring, setConfiguring] = useState<ConfigurableProvider | null>(null)
   const [syncing, setSyncing] = useState<ConfigurableProvider | null>(null)
+  const autoSyncAttempted = useRef(false)
   const [isPending, startTransition] = useTransition()
 
   const filteredAssets = useMemo(() => {
@@ -178,6 +179,23 @@ export function TrackingClient({
       }
     })
   }
+
+  useEffect(() => {
+    if (autoSyncAttempted.current) return
+    const staleConnection = connections.find((connection) => {
+      if (!connection.available || !connection.configured || connection.error) return false
+      if (!connection.lastSyncedAt) return true
+      return Date.now() - new Date(connection.lastSyncedAt).getTime() >= 30 * 60 * 1000
+    })
+    if (!staleConnection || staleConnection.id === 'premier') return
+
+    autoSyncAttempted.current = true
+    const timeout = window.setTimeout(
+      () => syncProvider(staleConnection.id as ConfigurableProvider),
+      400
+    )
+    return () => window.clearTimeout(timeout)
+  }, [connections])
 
   return (
     <div className="space-y-4">
@@ -311,6 +329,10 @@ export function TrackingClient({
                 )}
               </div>
             ))}
+            <p className="text-xs text-muted-foreground">
+              Connected providers refresh automatically when Tracking opens and data is over 30
+              minutes old.
+            </p>
           </CardContent>
         </Card>
       </div>

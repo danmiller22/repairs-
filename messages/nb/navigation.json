@@ -2,6 +2,7 @@
   "breadcrumbs": {
     "dashboard": "Dashbord",
     "vehicles": "Kjøretøy",
+    "tracking": "Sporing",
     "allVehicles": "Alle kjøretøy",
     "vehicleDetails": "Kjøretøydetaljer",
     "customers": "Kunder",
@@ -81,6 +82,7 @@
     "telegram": "Telegram",
     "workshop": "Verksted",
     "vehicles": "Kjøretøy",
+    "tracking": "Sporing",
     "vessels": "Fartøy",
     "reminders": "Påminnelser",
     "workOrders": "Arbeidsordre",

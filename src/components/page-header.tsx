@@ -12,10 +12,9 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
-import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
-import { AlertTriangle, Search, X, Zap } from 'lucide-react'
+import { AlertTriangle, Search, X } from 'lucide-react'
 import { useShowWhiteLabelCta } from '@/components/white-label-cta-context'
 import { useLicenseExpiry } from '@/components/license-expiry-context'
 import { QuickCreateMenu } from '@/components/quick-create-menu'
@@ -44,13 +43,12 @@ type BreadcrumbSegment = { key: string; href?: string }
 const breadcrumbMap: Record<string, BreadcrumbSegment[]> = {
   '/': [{ key: 'dashboard' }],
   '/vehicles': [{ key: 'vehicles', href: '/vehicles' }, { key: 'allVehicles' }],
+  '/tracking': [{ key: 'tracking' }],
   '/customers': [{ key: 'customers', href: '/customers' }, { key: 'allCustomers' }],
   '/work-orders': [{ key: 'workOrders', href: '/work-orders' }, { key: 'allWorkOrders' }],
   '/quotes': [{ key: 'quotes', href: '/quotes' }, { key: 'allQuotes' }],
   '/billing': [{ key: 'billing', href: '/billing' }, { key: 'billingHistory' }],
   '/inventory': [{ key: 'inventory', href: '/inventory' }, { key: 'allParts' }],
-  '/reports': [{ key: 'reports', href: '/reports' }, { key: 'reports' }],
-  '/reminders': [{ key: 'reminders', href: '/reminders' }, { key: 'allReminders' }],
   '/work-board': [{ key: 'workBoard' }],
   '/work-board/presenter': [{ key: 'workBoard', href: '/work-board' }, { key: 'presenter' }],
   '/admin': [{ key: 'adminOverview' }],

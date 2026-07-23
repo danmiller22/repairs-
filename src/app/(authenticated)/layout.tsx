@@ -12,7 +12,6 @@ import { CurrencySettingsProvider } from "@/components/currency-settings-context
 import { getCachedMembership } from "@/lib/cached-session";
 import { hasPermission, PermissionAction, PermissionSubject } from "@/lib/permissions";
 import { OnlineTracker } from "@/components/online-tracker";
-import { InstallBanner } from "@/components/pwa-install-prompt";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { ServiceTypeProvider } from "@/components/service-type-context";
 import { LicenseExpiryProvider } from "@/components/license-expiry-context";
@@ -138,7 +137,6 @@ export default async function DashboardLayout({
         <SearchCommand />
         {isOwnerOrAdmin && <NotificationInitializer />}
         <OnlineTracker />
-        <InstallBanner />
       </ConfirmProvider>
       </CurrencySettingsProvider>
       </DateSettingsProvider>

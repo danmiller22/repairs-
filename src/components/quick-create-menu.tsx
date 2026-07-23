@@ -17,7 +17,7 @@ import {
   Loader2,
   Wrench,
   Users,
-  Car,
+  Truck,
   FileText,
   Package,
   ClipboardCheck,
@@ -133,7 +133,7 @@ export function QuickCreateMenu() {
             {t("quickCreate.customer")}
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => router.push("/vehicles?create=true")}>
-            <Car className="h-4 w-4" />
+            <Truck className="h-4 w-4" />
             {t("quickCreate.vehicle")}
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => router.push("/quotes?create=true")}>

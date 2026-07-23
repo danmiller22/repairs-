@@ -2,6 +2,7 @@
   "breadcrumbs": {
     "dashboard": "Панель управления",
     "vehicles": "Транспортные средства",
+    "tracking": "Отслеживание",
     "allVehicles": "Все транспортные средства",
     "vehicleDetails": "Детали транспортного средства",
     "customers": "Клиенты",
@@ -81,6 +82,7 @@
     "telegram": "Telegram",
     "workshop": "Мастерская",
     "vehicles": "Транспортные средства",
+    "tracking": "Отслеживание",
     "vessels": "Суда",
     "reminders": "Напоминания",
     "workOrders": "Заказ-наряды",

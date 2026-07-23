@@ -56,7 +56,7 @@ export async function globalSearch(query: string) {
       }),
     };
 
-    const [vehicles, customers, services, parts, quotes, reminders, inspections] = await Promise.all([
+    const [vehicles, customers, services, parts, quotes, inspections] = await Promise.all([
       db.vehicle.findMany({
         where: vehicleWhere,
         select: {
@@ -197,36 +197,6 @@ export async function globalSearch(query: string) {
         },
         take: 10,
       }),
-      db.reminder.findMany({
-        where: {
-          vehicle: { organizationId },
-          AND: words.map((word) => ({
-            OR: [
-              { title: { contains: word, mode } },
-              { description: { contains: word, mode } },
-              { vehicle: { make: { contains: word, mode } } },
-              { vehicle: { model: { contains: word, mode } } },
-              { vehicle: { licensePlate: { contains: word, mode } } },
-            ],
-          })),
-        },
-        select: {
-          id: true,
-          title: true,
-          dueDate: true,
-          isCompleted: true,
-          vehicle: {
-            select: {
-              id: true,
-              make: true,
-              model: true,
-              year: true,
-              licensePlate: true,
-            },
-          },
-        },
-        take: 10,
-      }),
       db.inspection.findMany({
         where: {
           vehicle: { organizationId },
@@ -259,6 +229,6 @@ export async function globalSearch(query: string) {
       }),
     ]);
 
-    return { vehicles, customers, services, parts, quotes, reminders, inspections };
+    return { vehicles, customers, services, parts, quotes, reminders: [], inspections };
   }, { requiredPermissions: [{ action: PermissionAction.READ, subject: PermissionSubject.DASHBOARD }] });
 }

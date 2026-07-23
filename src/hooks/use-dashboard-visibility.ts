@@ -4,7 +4,6 @@ import { useState, useCallback } from "react";
 
 export const DASHBOARD_CARD_IDS = [
   "maintenance",
-  "reminders",
   "inspections",
   "quoteRequests",
   "quoteResponses",

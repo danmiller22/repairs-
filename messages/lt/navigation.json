@@ -2,6 +2,7 @@
   "breadcrumbs": {
     "dashboard": "Valdymo skydelis",
     "vehicles": "Transporto priemonės",
+    "tracking": "Sekimas",
     "allVehicles": "Visos transporto priemonės",
     "vehicleDetails": "Transporto priemonės informacija",
     "customers": "Klientai",
@@ -81,6 +82,7 @@
     "telegram": "Telegram",
     "workshop": "Dirbtuvės",
     "vehicles": "Transporto priemonės",
+    "tracking": "Sekimas",
     "vessels": "Laivai",
     "reminders": "Priminimai",
     "workOrders": "Darbo užsakymai",

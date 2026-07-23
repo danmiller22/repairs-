@@ -2,6 +2,7 @@
   "breadcrumbs": {
     "dashboard": "Panel de control",
     "vehicles": "Vehículos",
+    "tracking": "Seguimiento",
     "allVehicles": "Todos los vehículos",
     "vehicleDetails": "Detalles del vehículo",
     "customers": "Clientes",
@@ -81,6 +82,7 @@
     "telegram": "Telegram",
     "workshop": "Taller",
     "vehicles": "Vehículos",
+    "tracking": "Seguimiento",
     "vessels": "Embarcaciones",
     "reminders": "Recordatorios",
     "workOrders": "Órdenes de trabajo",

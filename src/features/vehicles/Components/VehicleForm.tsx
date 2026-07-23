@@ -48,6 +48,7 @@ interface VehicleFormProps {
   onOpenChange: (open: boolean) => void;
   vehicle?: {
     id: string;
+    assetType?: string | null;
     make: string;
     model: string;
     year: number;
@@ -152,6 +153,7 @@ export function VehicleForm({ open, onOpenChange, vehicle, customers }: VehicleF
       }
 
       const data: CreateVehicleInput & { imageUrl?: string } = {
+        assetType: ((formData.get("assetType") as string) || "truck") as "truck" | "trailer",
         make: formData.get("make") as string,
         model: formData.get("model") as string,
         year: Number(formData.get("year")),
@@ -199,6 +201,21 @@ export function VehicleForm({ open, onOpenChange, vehicle, customers }: VehicleF
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {!isMarine && (
+            <div className="space-y-2">
+              <Label htmlFor="assetType">Unit Type</Label>
+              <Select name="assetType" defaultValue={vehicle?.assetType ?? "truck"}>
+                <SelectTrigger id="assetType">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="truck">Truck</SelectItem>
+                  <SelectItem value="trailer">Trailer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {/* Image upload */}
           <div className="space-y-2">
             <Label>{t("photo")}</Label>

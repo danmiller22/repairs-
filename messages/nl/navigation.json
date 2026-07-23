@@ -2,6 +2,7 @@
   "breadcrumbs": {
     "dashboard": "Dashboard",
     "vehicles": "Voertuigen",
+    "tracking": "Tracking",
     "allVehicles": "Alle voertuigen",
     "vehicleDetails": "Voertuiggegevens",
     "customers": "Klanten",
@@ -81,6 +82,7 @@
     "telegram": "Telegram",
     "workshop": "Werkplaats",
     "vehicles": "Voertuigen",
+    "tracking": "Tracking",
     "vessels": "Vaartuigen",
     "reminders": "Herinneringen",
     "workOrders": "Werkorders",

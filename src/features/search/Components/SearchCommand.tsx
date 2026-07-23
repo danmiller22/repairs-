@@ -10,7 +10,7 @@ import {
   CommandGroup,
   CommandItem,
 } from "@/components/ui/command";
-import { Bell, Car, ClipboardCheck, FileText, Package, Settings, Users, Wrench } from "lucide-react";
+import { ClipboardCheck, FileText, Package, Settings, Truck, Users, Wrench } from "lucide-react";
 import { globalSearch, getRecentCustomers } from "@/features/search/Actions/searchActions";
 
 interface SearchResult {
@@ -201,7 +201,7 @@ export function SearchCommand() {
   );
 
   const hasQuery = debouncedQuery.length >= 2;
-  const hasResults = results.vehicles.length > 0 || results.customers.length > 0 || results.services.length > 0 || results.parts.length > 0 || results.quotes.length > 0 || results.reminders.length > 0 || results.inspections.length > 0;
+  const hasResults = results.vehicles.length > 0 || results.customers.length > 0 || results.services.length > 0 || results.parts.length > 0 || results.quotes.length > 0 || results.inspections.length > 0;
   const matchedSettings = hasQuery ? filterSettings(debouncedQuery) : SEARCHABLE_SETTINGS;
   const showDefault = !hasQuery;
 
@@ -271,7 +271,7 @@ export function SearchCommand() {
                         onSelect={() => handleSelect(`/vehicles/${v.id}`)}
                         className="pl-10"
                       >
-                        <Car className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Truck className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
                         <span className="text-sm">
                           {v.year} {v.make} {v.model}
                         </span>
@@ -294,7 +294,7 @@ export function SearchCommand() {
                     value={`${v.year} ${v.make} ${v.model} ${v.licensePlate || ""}`}
                     onSelect={() => handleSelect(`/vehicles/${v.id}`)}
                   >
-                    <Car className="mr-2 h-4 w-4 text-muted-foreground" />
+                    <Truck className="mr-2 h-4 w-4 text-muted-foreground" />
                     <span>
                       {v.year} {v.make} {v.model}
                     </span>
@@ -362,26 +362,6 @@ export function SearchCommand() {
                       <span>{p.name}</span>
                       <span className="text-xs text-muted-foreground">
                         {[p.partNumber, `${p.quantity} in stock`].filter(Boolean).join(" · ")}
-                      </span>
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-            {results.reminders.length > 0 && (
-              <CommandGroup heading="Reminders">
-                {results.reminders.map((r) => (
-                  <CommandItem
-                    key={r.id}
-                    value={`${r.title} ${r.vehicle.make} ${r.vehicle.model} ${r.vehicle.licensePlate || ""}`}
-                    onSelect={() => handleSelect(`/vehicles/${r.vehicle.id}?tab=reminders`)}
-                  >
-                    <Bell className="mr-2 h-4 w-4 text-muted-foreground" />
-                    <div className="flex flex-col">
-                      <span>{r.title}{r.isCompleted && <span className="ml-1.5 text-muted-foreground line-through">(done)</span>}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {`${r.vehicle.year} ${r.vehicle.make} ${r.vehicle.model}`}
-                        {r.vehicle.licensePlate && ` · ${r.vehicle.licensePlate}`}
                       </span>
                     </div>
                   </CommandItem>

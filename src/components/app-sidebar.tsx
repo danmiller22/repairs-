@@ -13,12 +13,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
@@ -37,45 +32,30 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import {
-  BarChart3,
-  Bell,
   Building2,
-  CalendarDays,
-  Car,
   Check,
   ChevronsUpDown,
-  ClipboardCheck,
   ClipboardList,
-  Columns3,
-  FileText,
-  History,
-  Globe,
-  Layers,
-  MessageSquare,
-  Send,
+  MapPinned,
   LayoutDashboard,
   Loader2,
   LogOut,
   Moon,
-  Package,
   Plus,
   Receipt,
   Settings,
   Ship,
   ShieldCheck,
   Sun,
-  Users,
+  Truck,
 } from 'lucide-react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { switchOrganization } from '@/features/team/Actions/switchOrganization'
-import { setLocale } from '@/i18n/actions'
-import { locales, localeNames } from '@/i18n/config'
 import { createNewOrganization } from '@/features/team/Actions/createNewOrganization'
 import type { PlanFeatures } from '@/lib/features'
 import { useTheme } from '@/components/theme-provider'
 import { useServiceType } from '@/components/service-type-context'
 import { NotificationBell, NotificationPanel } from '@/features/notifications/Components/NotificationPanel'
-import { SidebarInstallButton } from '@/components/pwa-install-prompt'
 
 type OrgInfo = { id: string; name: string; role: string }
 
@@ -117,11 +97,10 @@ export function AppSidebar({
   const canAccess = (subject: string) => !visibleSubjects || visibleSubjects.includes(subject)
 
   const workshopItems = [
-    { titleKey: isMarine ? 'sidebar.vessels' as const : 'sidebar.vehicles' as const, url: '/vehicles', icon: isMarine ? Ship : Car, subject: 'vehicles' },
+    { titleKey: isMarine ? 'sidebar.vessels' as const : 'sidebar.vehicles' as const, url: '/vehicles', icon: isMarine ? Ship : Truck, subject: 'vehicles' },
+    { titleKey: 'sidebar.tracking' as const, url: '/tracking', icon: MapPinned, subject: 'vehicles' },
     { titleKey: 'sidebar.workOrders' as const, url: '/work-orders', icon: ClipboardList, subject: 'work_orders' },
-    { titleKey: 'sidebar.reminders' as const, url: '/reminders', icon: Bell, subject: 'vehicles' },
     { titleKey: 'sidebar.billing' as const, url: '/billing', icon: Receipt, subject: 'billing' },
-    ...(features?.reports !== false && canAccess('reports') ? [{ titleKey: 'sidebar.reports' as const, url: '/reports', icon: BarChart3, subject: 'reports' }] : []),
   ].filter((item) => canAccess(item.subject))
 
   const closeMobileSidebar = () => {
@@ -298,7 +277,6 @@ export function AppSidebar({
             </SidebarMenu>
           </SidebarGroup>
         )}
-        <SidebarInstallButton />
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>

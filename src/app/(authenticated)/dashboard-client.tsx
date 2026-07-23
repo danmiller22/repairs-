@@ -23,7 +23,6 @@ import { statusColors } from "@/lib/table-utils";
 import {
   AlertTriangle,
   ArrowRight,
-  Bell,
   Check,
   ClipboardCheck,
   ClipboardList,
@@ -38,7 +37,6 @@ import {
   Settings,
   SlidersHorizontal,
   Undo2,
-  Users,
   X,
 } from "lucide-react";
 import { useFormatCurrency } from '@/components/currency-settings-context'
@@ -76,21 +74,6 @@ interface DashboardStats {
   totalCustomers: number;
   todaysServices: ServiceItem[];
   recentServices: ServiceItem[];
-}
-
-interface ReminderItem {
-  id: string;
-  title: string;
-  description: string | null;
-  dueDate: Date | null;
-  dueMileage: number | null;
-  vehicle: {
-    id: string;
-    make: string;
-    model: string;
-    year: number;
-    licensePlate: string | null;
-  };
 }
 
 interface VehicleDueForService {
@@ -213,7 +196,6 @@ const observationSeverityColors: Record<string, string> = {
 export function DashboardClient({
   stats,
   currencyCode = "USD",
-  upcomingReminders = [],
   vehiclesDueForService = [],
   dismissedMaintenanceVehicles = [],
   unitSystem = "imperial",
@@ -229,7 +211,6 @@ export function DashboardClient({
 }: {
   stats: DashboardStats;
   currencyCode?: string;
-  upcomingReminders?: ReminderItem[];
   vehiclesDueForService?: VehicleDueForService[];
   dismissedMaintenanceVehicles?: DismissedMaintenanceVehicle[];
   unitSystem?: "metric" | "imperial";
@@ -505,90 +486,6 @@ export function DashboardClient({
                     </div>
                   ))}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Upcoming Reminders */}
-        {isVisible("reminders") && (
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Bell className="h-4 w-4" />
-                  {t("reminders.title")}
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs gap-1"
-                  onClick={() => router.push("/reminders")}
-                >
-                  {t("viewAll")}
-                  <ArrowRight className="h-3 w-3" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              {upcomingReminders.length === 0 ? (
-                <p className="px-5 py-4 text-xs text-muted-foreground">{t("reminders.noData")}</p>
-              ) : (
-              <div className="divide-y">
-                {upcomingReminders.map((r) => {
-                  const now = new Date();
-                  const sevenDaysFromNow = new Date(now);
-                  sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-                  const isOverdue = r.dueDate && new Date(r.dueDate) < now;
-                  const isDueSoon = r.dueDate && !isOverdue && new Date(r.dueDate) <= sevenDaysFromNow;
-
-                  return (
-                    <div
-                      key={r.id}
-                      className="flex items-center justify-between px-5 py-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                      onClick={() => router.push(`/vehicles/${r.vehicle.id}?tab=reminders`)}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                          isOverdue ? "bg-red-500/10" : isDueSoon ? "bg-amber-500/10" : "bg-primary/10"
-                        }`}>
-                          {isOverdue ? (
-                            <AlertTriangle className="h-4 w-4 text-red-500" />
-                          ) : isDueSoon ? (
-                            <Clock className="h-4 w-4 text-amber-500" />
-                          ) : (
-                            <Bell className="h-4 w-4 text-primary" />
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-medium text-sm truncate">{r.title}</p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {r.vehicle.year} {r.vehicle.make} {r.vehicle.model}
-                            {r.vehicle.licensePlate && ` · ${r.vehicle.licensePlate}`}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="shrink-0 ml-3">
-                        {isOverdue && (
-                          <Badge variant="destructive" className="text-[10px]">
-                            {t("reminders.overdue")}
-                          </Badge>
-                        )}
-                        {isDueSoon && (
-                          <Badge className="bg-amber-500/15 text-amber-600 border-amber-500/20 text-[10px]">
-                            {t("reminders.dueSoon")}
-                          </Badge>
-                        )}
-                        {r.dueDate && !isOverdue && !isDueSoon && (
-                          <span className="text-xs text-muted-foreground">
-                            {formatDate(new Date(r.dueDate))}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
               )}
             </CardContent>
           </Card>

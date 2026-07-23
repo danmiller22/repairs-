@@ -47,7 +47,7 @@ import {
   ArchiveRestore,
   ArrowLeft,
   Bell,
-  Car,
+  Truck,
   CheckCircle2,
   ClipboardCheck,
   Clock,
@@ -581,7 +581,7 @@ export function VehicleDetailClient({
             </button>
           ) : (
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
-              <Car className="h-5 w-5 text-primary" />
+              <Truck className="h-5 w-5 text-primary" />
             </div>
           )}
           <div className="min-w-0 flex-1">

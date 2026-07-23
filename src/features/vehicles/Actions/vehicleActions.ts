@@ -145,6 +145,7 @@ export async function createVehicle(input: unknown) {
     });
     revalidatePath("/");
     revalidatePath("/vehicles");
+    revalidatePath("/tracking");
     return vehicle;
   }, {
     requiredPermissions: [{ action: PermissionAction.CREATE, subject: PermissionSubject.VEHICLES }],
@@ -205,6 +206,7 @@ export async function updateVehicle(input: unknown) {
     revalidatePath("/");
     revalidatePath("/vehicles");
     revalidatePath(`/vehicles/${id}`);
+    revalidatePath("/tracking");
     return { id, count: updateResult.count, fields: changedKeys, vehicleDisplay };
   }, {
     requiredPermissions: [{ action: PermissionAction.UPDATE, subject: PermissionSubject.VEHICLES }],
@@ -259,6 +261,7 @@ export async function deleteVehicle(vehicleId: string) {
     const vehicleDisplay = `${vehicle.year} ${vehicle.make} ${vehicle.model}${vehicle.licensePlate ? ` (${vehicle.licensePlate})` : ""}`;
     revalidatePath("/");
     revalidatePath("/vehicles");
+    revalidatePath("/tracking");
     return { vehicleId, vehicleDisplay };
   }, {
     requiredPermissions: [{ action: PermissionAction.DELETE, subject: PermissionSubject.VEHICLES }],

@@ -2,6 +2,7 @@
   "breadcrumbs": {
     "dashboard": "Kontrol Paneli",
     "vehicles": "Araçlar",
+    "tracking": "Takip",
     "allVehicles": "Tüm Araçlar",
     "vehicleDetails": "Araç Detayları",
     "customers": "Müşteriler",
@@ -81,6 +82,7 @@
     "telegram": "Telegram",
     "workshop": "Atölye",
     "vehicles": "Araçlar",
+    "tracking": "Takip",
     "vessels": "Tekneler",
     "reminders": "Hatırlatmalar",
     "workOrders": "İş Emirleri",

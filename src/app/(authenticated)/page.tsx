@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import { getDashboardStats, getUpcomingReminders } from "@/features/vehicles/Actions/dashboardActions";
+import { getDashboardStats } from "@/features/vehicles/Actions/dashboardActions";
 import { getSettings } from "@/features/settings/Actions/settingsActions";
 import { SETTING_KEYS } from "@/features/settings/Schema/settingsSchema";
 import { getVehiclesDueForService, getDismissedMaintenanceVehicles } from "@/features/vehicles/Actions/predictedMaintenanceActions";
@@ -22,10 +22,9 @@ export default async function DashboardPage() {
   const features = auth ? await getFeatures(auth.organizationId) : null;
   const smsEnabled = features?.sms ?? false;
 
-  const [result, settingsResult, remindersResult, maintenanceResult, dismissedMaintenanceResult, inProgressResult, completedResult, quoteRequestsResult, quoteResponsesResult, smsResult, notificationsResult, auditLogsResult, recentObservationsResult, myJobsResult] = await Promise.all([
+  const [result, settingsResult, maintenanceResult, dismissedMaintenanceResult, inProgressResult, completedResult, quoteRequestsResult, quoteResponsesResult, smsResult, notificationsResult, auditLogsResult, recentObservationsResult, myJobsResult] = await Promise.all([
     getDashboardStats(),
     getSettings([SETTING_KEYS.CURRENCY_CODE, SETTING_KEYS.UNIT_SYSTEM]),
-    getUpcomingReminders(),
     getVehiclesDueForService(),
     getDismissedMaintenanceVehicles(),
     getInspectionsPaginated({ status: "in_progress", pageSize: 5 }),
@@ -71,7 +70,6 @@ export default async function DashboardPage() {
         <DashboardClient
           stats={result.data}
           currencyCode={currencyCode}
-          upcomingReminders={remindersResult.success && remindersResult.data ? remindersResult.data : []}
           vehiclesDueForService={maintenanceResult.success && maintenanceResult.data ? maintenanceResult.data : []}
           dismissedMaintenanceVehicles={dismissedMaintenanceResult.success && dismissedMaintenanceResult.data ? dismissedMaintenanceResult.data : []}
           unitSystem={unitSystem}

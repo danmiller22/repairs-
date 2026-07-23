@@ -2,6 +2,7 @@
   "breadcrumbs": {
     "dashboard": "Pulpit",
     "vehicles": "Pojazdy",
+    "tracking": "Śledzenie",
     "allVehicles": "Wszystkie pojazdy",
     "vehicleDetails": "Szczegóły pojazdu",
     "customers": "Klienci",
@@ -81,6 +82,7 @@
     "telegram": "Telegram",
     "workshop": "Warsztat",
     "vehicles": "Pojazdy",
+    "tracking": "Śledzenie",
     "vessels": "Jednostki",
     "reminders": "Przypomnienia",
     "workOrders": "Zlecenia",

@@ -5,26 +5,17 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import {
-  BarChart3,
-  Bell,
-  CalendarDays,
-  Car,
-  ClipboardCheck,
   ClipboardList,
-  Columns3,
-  FileText,
-  History,
-  Layers,
   Loader2,
+  MapPinned,
   Menu,
   Package,
   Pencil,
   Plus,
   Receipt,
-  ScanBarcode,
   Settings,
   ShieldCheck,
-  Users,
+  Truck,
 } from 'lucide-react'
 import {
   Drawer,
@@ -39,24 +30,17 @@ import { BarcodeScannerDialog } from '@/components/barcode-scanner-dialog'
 import { InventoryPartForm } from '@/features/inventory/Components/InventoryPartForm'
 import { lookupPartByBarcode } from '@/features/inventory/Actions/lookupPartByBarcode'
 import { adjustInventoryStock, getInventoryPart } from '@/features/inventory/Actions/inventoryActions'
-import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
 const primaryItems = [
-  { href: '/vehicles', icon: Car, labelKey: 'vehicles' },
+  { href: '/vehicles', icon: Truck, labelKey: 'vehicles' },
   { href: '/work-orders', icon: ClipboardList, labelKey: 'workOrders' },
   { href: '/billing', icon: Receipt, labelKey: 'billing' },
-  { href: '/reports', icon: BarChart3, labelKey: 'reports' },
+  { href: '/tracking', icon: MapPinned, labelKey: 'tracking' },
 ] as const
 
-const workshopItems = [
-  { href: '/reminders', icon: Bell, labelKey: 'reminders' },
-] as const
-
-const businessItems = [] as const
-
-const allDrawerItems = [...workshopItems, ...businessItems, { href: '/settings', icon: Settings, labelKey: 'settings' }, { href: '/admin', icon: ShieldCheck, labelKey: 'adminPanel' }] as const
+const allDrawerItems = [{ href: '/settings', icon: Settings, labelKey: 'settings' }, { href: '/admin', icon: ShieldCheck, labelKey: 'adminPanel' }] as const
 
 export function MobileBottomNav({ isSuperAdmin }: { isSuperAdmin?: boolean }) {
   const pathname = usePathname()
@@ -136,34 +120,6 @@ export function MobileBottomNav({ isSuperAdmin }: { isSuperAdmin?: boolean }) {
             <DrawerTitle>{t('more')}</DrawerTitle>
           </DrawerHeader>
           <div className="px-4 pb-4 space-y-4">
-            {/* Workshop */}
-            <div>
-              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2 px-1">{t('workshop')}</p>
-              <nav className="grid grid-cols-4 gap-2">
-                {workshopItems.map(({ href, icon: Icon, labelKey }) => {
-                  const isActive = pathname === href || pathname.startsWith(`${href}/`)
-                  return (
-                    <Link
-                      key={href}
-                      href={href}
-                      onClick={() => setDrawerOpen(false)}
-                      className={cn(
-                        'flex flex-col items-center gap-1.5 rounded-lg py-3 text-xs transition-colors',
-                        isActive
-                          ? 'bg-primary/10 text-primary'
-                          : 'text-muted-foreground hover:bg-accent'
-                      )}
-                    >
-                      <Icon className="h-5 w-5" />
-                      <span>{t(labelKey)}</span>
-                    </Link>
-                  )
-                })}
-              </nav>
-            </div>
-
-            <Separator />
-
             {/* Settings & Admin */}
             <nav className="grid grid-cols-4 gap-2">
               <Link

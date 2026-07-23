@@ -21,7 +21,7 @@ import {
 import {
   Loader2,
   Plus,
-  Car,
+  Truck,
   Search,
   ArrowLeft,
   UserPlus,
@@ -213,7 +213,7 @@ export function VehiclePickerDialog({
                         className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-muted"
                         onClick={() => handleSelect(v.id)}
                       >
-                        <Car className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <Truck className="h-4 w-4 shrink-0 text-muted-foreground" />
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium">
                             {v.year} {v.make} {v.model}

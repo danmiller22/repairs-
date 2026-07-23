@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const createVehicleSchema = z.object({
+  assetType: z.enum(["truck", "trailer"]).default("truck"),
   make: z.string().min(1, "Make is required"),
   model: z.string().min(1, "Model is required"),
   year: z.coerce

@@ -9,6 +9,11 @@ import type {
   TrackingProviderId,
   XtraLeaseCredentials,
 } from './provider-credentials'
+import {
+  getPremierLegacyCargoStatus,
+  getSkyBitzCargoStatus,
+  type TrackingCargoStatus,
+} from './cargo-status'
 
 type NormalizedTrackingUnit = {
   externalId: string
@@ -26,7 +31,7 @@ type NormalizedTrackingUnit = {
   address: string | null
   lastSeenAt: Date | null
   dwellSince: Date | null
-  cargoStatus: 'empty' | 'loaded' | 'unknown'
+  cargoStatus: TrackingCargoStatus
   mileage: number | null
 }
 
@@ -192,6 +197,17 @@ type SkyBitzGls = {
   idle?: {
     idlestatus?: string
   }
+  serial?:
+    | {
+        serialtype?: string
+        serialname?: string
+        serialdata?: string
+      }
+    | Array<{
+        serialtype?: string
+        serialname?: string
+        serialdata?: string
+      }>
 }
 
 function formatSkyBitzAddress(landmark: SkyBitzGls['landmark']) {
@@ -277,7 +293,7 @@ async function fetchXtraLeaseUnits(
         address: formatSkyBitzAddress(position.landmark),
         lastSeenAt: safeDate(position.messagereceivedtime || position.time),
         dwellSince: null,
-        cargoStatus: 'unknown',
+        cargoStatus: getSkyBitzCargoStatus(position),
         mileage: null,
       },
     ]
@@ -321,6 +337,20 @@ type PremierAssetsPage = {
 
 const PREMIER_AUTH_URL = 'https://auth-service.spireon.com'
 const PREMIER_ASSETS_URL = 'https://ati-avs-api.spireon.com/api/v1/assets'
+const PREMIER_TRANSPORTATION_URL = 'https://transportation.us.spireon.com'
+
+type PremierLegacyAsset = {
+  assetName?: string
+  assetDisplayName?: string
+  cargoOn?: boolean
+  cargoLoaded?: boolean
+}
+
+type PremierLegacyAssetPage = {
+  success?: boolean
+  data?: PremierLegacyAsset[]
+  total?: number
+}
 
 function compassHeading(value: unknown) {
   if (typeof value === 'number') return safeNumber(value)
@@ -395,10 +425,80 @@ async function getPremierToken(credentials: PremierCredentials) {
   return payload.authResult.token
 }
 
+function getResponseCookies(response: Response) {
+  const headers = response.headers as Headers & { getSetCookie?: () => string[] }
+  const setCookies = headers.getSetCookie?.() ?? []
+  return setCookies
+    .map((value) => value.split(';', 1)[0]?.trim())
+    .filter((value): value is string => Boolean(value))
+    .join('; ')
+}
+
+async function fetchPremierLegacyCargo(token: string) {
+  const loginResponse = await fetch(
+    `${PREMIER_TRANSPORTATION_URL}/home/login?apiToken=${encodeURIComponent(token)}`,
+    {
+      redirect: 'manual',
+      cache: 'no-store',
+      signal: AbortSignal.timeout(30_000),
+    }
+  )
+  const redirectLocation = loginResponse.headers.get('location')
+  const sessionId = redirectLocation?.match(/;jsessionid=([^/?#]+)/i)?.[1]
+  const cookies = getResponseCookies(loginResponse)
+
+  if (
+    loginResponse.status < 300 ||
+    loginResponse.status >= 400 ||
+    !redirectLocation ||
+    !sessionId ||
+    !cookies
+  ) {
+    throw new Error('Premier/Spireon could not open the FleetLocate cargo feed')
+  }
+
+  const url = new URL(
+    `/rest/json/assetGrid;jsessionid=${encodeURIComponent(sessionId)}`,
+    PREMIER_TRANSPORTATION_URL
+  )
+  url.searchParams.set('offset', '0')
+  url.searchParams.set('max', '1000')
+
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/json',
+      Cookie: cookies,
+      Referer: redirectLocation,
+    },
+    redirect: 'manual',
+    cache: 'no-store',
+    signal: AbortSignal.timeout(45_000),
+  })
+  if (!response.ok || response.status >= 300) {
+    throw new Error(`Premier/Spireon cargo request failed (${response.status})`)
+  }
+
+  const payload = (await response.json()) as PremierLegacyAssetPage
+  if (payload.success === false || !Array.isArray(payload.data)) {
+    throw new Error('Premier/Spireon returned an unreadable cargo response')
+  }
+
+  return new Map(
+    payload.data.flatMap((asset) => {
+      const externalId = asset.assetName?.trim() || asset.assetDisplayName?.trim()
+      const cargoStatus = getPremierLegacyCargoStatus(asset)
+      return externalId && cargoStatus !== 'unknown'
+        ? ([[externalId, cargoStatus]] as Array<[string, TrackingCargoStatus]>)
+        : []
+    })
+  )
+}
+
 async function fetchPremierUnits(
   credentials: PremierCredentials
 ): Promise<NormalizedTrackingUnit[]> {
   const token = await getPremierToken(credentials)
+  const legacyCargoByAsset = await fetchPremierLegacyCargo(token)
   const assets: PremierAsset[] = []
   const limit = 250
 
@@ -458,7 +558,9 @@ async function fetchPremierUnits(
         address: formatPremierAddress(asset.address),
         lastSeenAt: safeDate(asset.location?.locationLastReported || asset.eventTime),
         dwellSince: status === 'moving' ? null : safeDate(asset.statusStartDate),
-        cargoStatus: cargoLoaded === true ? 'loaded' : cargoLoaded === false ? 'empty' : 'unknown',
+        cargoStatus:
+          legacyCargoByAsset.get(externalId) ??
+          (cargoLoaded === true ? 'loaded' : cargoLoaded === false ? 'empty' : 'unknown'),
         mileage:
           odometerMeters === null ? null : Math.max(0, Math.round(odometerMeters / 1609.344)),
       },
@@ -502,6 +604,7 @@ async function persistUnits(
       trackingLongitude: true,
       trackingStatus: true,
       trackingStoppedSince: true,
+      trackingCargoStatus: true,
     },
   })
 
@@ -536,6 +639,10 @@ async function persistUnits(
         sameStopLocation(match, unit)
           ? match.trackingStoppedSince
           : new Date())
+    const cargoStatus =
+      unit.cargoStatus === 'unknown'
+        ? ((match?.trackingCargoStatus as TrackingCargoStatus | null) ?? 'unknown')
+        : unit.cargoStatus
     const trackingData = {
       assetType: unit.assetType,
       trackingProvider: provider,
@@ -548,7 +655,7 @@ async function persistUnits(
       trackingAddress: unit.address,
       trackingLastSeenAt: unit.lastSeenAt,
       trackingStoppedSince,
-      trackingCargoStatus: unit.cargoStatus,
+      trackingCargoStatus: cargoStatus,
     }
 
     if (match) {

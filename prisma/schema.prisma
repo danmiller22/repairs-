@@ -1,0 +1,1308 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  isSuperAdmin  Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  twoFactorEnabled Boolean   @default(false)
+  termsAcceptedAt  DateTime?
+  lastLogin        DateTime?
+  lastSeen         DateTime?
+
+  sessions               Session[]
+  accounts               Account[]
+  vehicles               Vehicle[]
+  customers              Customer[]
+  settings               AppSetting[]
+  inventoryParts         InventoryPart[]
+  quotes                 Quote[]
+  customFieldDefinitions CustomFieldDefinition[]
+  twoFactor              TwoFactor?
+  passkeys               Passkey[]
+  organizationMembers    OrganizationMember[]
+  auditLogs              AuditLog[]
+  technicians            Technician[]
+
+  @@map("users")
+}
+
+model AppSetting {
+  id    String @id @default(cuid())
+  key   String
+  value String
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, key])
+  @@index([organizationId])
+  @@map("app_settings")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String    @id @default(cuid())
+  identifier String    @unique
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@map("verifications")
+}
+
+model TwoFactor {
+  id          String @id @default(cuid())
+  secret      String
+  backupCodes String
+  userId      String @unique
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("two_factor")
+}
+
+model Passkey {
+  id           String   @id @default(cuid())
+  name         String?
+  publicKey    String
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialID String   @unique
+  counter      Int
+  deviceType   String
+  backedUp     Boolean
+  transports   String?
+  aaguid       String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@map("passkeys")
+}
+
+model Vehicle {
+  id                     String               @id @default(cuid())
+  make                   String
+  model                  String
+  year                   Int
+  vin                    String?
+  licensePlate           String?
+  color                  String?
+  mileage                Int                  @default(0)
+  fuelType               String?              @default("gasoline")
+  transmission           String?              @default("automatic")
+  engineSize             String?
+  engineCode             String?
+  purchaseDate           DateTime?
+  purchasePrice          Float?
+  imageUrl               String?
+  isArchived             Boolean              @default(false)
+  archiveReason          String?
+  maintenanceDismissed   Boolean              @default(false)
+  maintenanceDismissedAt DateTime?
+  aiMessages             AiGeneratedMessage[]
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  serviceRecords    ServiceRecord[]
+  notes             Note[]
+  fuelLogs          FuelLog[]
+  reminders         Reminder[]
+  quotes            Quote[]
+  recurringInvoices RecurringInvoice[]
+  inspections       Inspection[]
+  serviceRequests   ServiceRequest[]
+  findings          VehicleFinding[]
+
+  @@index([organizationId])
+  @@map("vehicles")
+}
+
+model ServiceRecord {
+  id              String    @id @default(cuid())
+  title           String
+  description     String?
+  type            String    @default("maintenance")
+  status          String    @default("completed")
+  cost            Float     @default(0)
+  mileage         Int?
+  serviceDate     DateTime  @default(now())
+  startDateTime   DateTime?
+  endDateTime     DateTime?
+  shopName        String?
+  techName        String?
+  parts           String?
+  laborHours      Float?
+  diagnosticNotes String?
+  invoiceNotes    String?
+  subtotal        Float     @default(0)
+  taxRate         Float     @default(0)
+  taxAmount       Float     @default(0)
+  taxInclusive    Boolean   @default(false)
+  totalAmount     Float     @default(0)
+  invoiceNumber   String?
+  invoiceDate     DateTime?
+  invoiceDueDate  DateTime?
+  discountType    String?
+  discountValue   Float     @default(0)
+  discountAmount  Float     @default(0)
+  manuallyPaid    Boolean   @default(false)
+
+  // Warranty tracking
+  warrantyMonths    Int?
+  warrantyMileage   Int?
+  warrantyExpiresAt DateTime?
+  warrantyNotes     String?
+
+  publicToken  String?   @unique
+  sharedAt     DateTime?
+  viewCount    Int       @default(0)
+  lastViewedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  vehicleId String
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  technicianId String?
+  technician   Technician? @relation(fields: [technicianId], references: [id], onDelete: SetNull)
+  sortOrder    Int         @default(0)
+
+  partItems     ServicePart[]
+  laborItems    ServiceLabor[]
+  attachments   ServiceAttachment[]
+  payments      Payment[]
+  statusReports StatusReport[]
+
+  discoveredFindings VehicleFinding[] @relation("FindingDiscoveredIn")
+  resolvedFindings   VehicleFinding[] @relation("FindingResolvedIn")
+
+  @@index([vehicleId])
+  @@index([technicianId])
+  @@map("service_records")
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  isPinned  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vehicleId String
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("notes")
+}
+
+model FuelLog {
+  id             String   @id @default(cuid())
+  date           DateTime @default(now())
+  mileage        Int
+  gallons        Float
+  pricePerGallon Float
+  totalCost      Float
+  isFillUp       Boolean  @default(true)
+  station        String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  vehicleId String
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("fuel_logs")
+}
+
+model Reminder {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  dueDate     DateTime?
+  dueMileage  Int?
+  isCompleted Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  vehicleId String
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("reminders")
+}
+
+model VehicleFinding {
+  id          String   @id @default(cuid())
+  description String
+  severity    String   @default("needs_work")
+  status      String   @default("open")
+  notes       String?
+  imageUrls   String[] @default([])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vehicleId String
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  serviceRecordId String?
+  serviceRecord   ServiceRecord? @relation("FindingDiscoveredIn", fields: [serviceRecordId], references: [id], onDelete: SetNull)
+
+  resolvedServiceRecordId String?
+  resolvedServiceRecord   ServiceRecord? @relation("FindingResolvedIn", fields: [resolvedServiceRecordId], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId])
+  @@index([serviceRecordId])
+  @@map("vehicle_findings")
+}
+
+model Customer {
+  id             String   @id @default(cuid())
+  name           String
+  email          String?
+  phone          String?
+  address        String?
+  company        String?
+  taxId          String?
+  taxExempt      Boolean  @default(false)
+  notes          String?
+  telegramChatId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  vehicles         Vehicle[]
+  quotes           Quote[]
+  smsMessages      SmsMessage[]
+  telegramMessages TelegramMessage[]
+  customerSessions CustomerSession[]
+  serviceRequests  ServiceRequest[]
+
+  @@index([organizationId])
+  @@map("customers")
+}
+
+model Payment {
+  id         String   @id @default(cuid())
+  amount     Float
+  date       DateTime @default(now())
+  method     String   @default("other")
+  note       String?
+  provider   String?
+  externalId String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  serviceRecordId String
+  serviceRecord   ServiceRecord @relation(fields: [serviceRecordId], references: [id], onDelete: Cascade)
+
+  @@index([serviceRecordId])
+  @@map("payments")
+}
+
+model ServiceAttachment {
+  id               String   @id @default(cuid())
+  fileName         String
+  fileUrl          String
+  fileType         String
+  fileSize         Int
+  category         String   @default("diagnostic")
+  description      String?
+  includeInInvoice Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  serviceRecordId String
+  serviceRecord   ServiceRecord @relation(fields: [serviceRecordId], references: [id], onDelete: Cascade)
+
+  @@index([serviceRecordId])
+  @@map("service_attachments")
+}
+
+model StoredFile {
+  id             String   @id @default(cuid())
+  organizationId String
+  category       String
+  filename       String
+  originalName   String
+  contentType    String
+  fileSize       Int
+  data           Bytes
+  createdAt      DateTime @default(now())
+
+  @@unique([organizationId, category, filename])
+  @@index([organizationId, category])
+  @@map("stored_files")
+}
+
+model ServicePart {
+  id              String  @id @default(cuid())
+  partNumber      String?
+  name            String
+  quantity        Float   @default(1)
+  unitPrice       Float   @default(0)
+  total           Float   @default(0)
+  unitCost        Float   @default(0)
+  markupPercent   Float   @default(0)
+  inventoryPartId String?
+
+  serviceRecordId String
+  serviceRecord   ServiceRecord @relation(fields: [serviceRecordId], references: [id], onDelete: Cascade)
+
+  @@index([serviceRecordId])
+  @@map("service_parts")
+}
+
+model ServiceLabor {
+  id          String @id @default(cuid())
+  description String
+  hours       Float  @default(0)
+  rate        Float  @default(0)
+  total       Float  @default(0)
+  pricingType String @default("hourly")
+
+  serviceRecordId String
+  serviceRecord   ServiceRecord @relation(fields: [serviceRecordId], references: [id], onDelete: Cascade)
+
+  @@index([serviceRecordId])
+  @@map("service_labor")
+}
+
+model LaborPreset {
+  id             String            @id @default(cuid())
+  name           String
+  description    String?
+  isArchived     Boolean           @default(false)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  userId         String
+  organizationId String
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  items          LaborPresetItem[]
+  parts          LaborPresetPart[]
+
+  @@index([organizationId])
+  @@map("labor_presets")
+}
+
+model LaborPresetItem {
+  id          String      @id @default(cuid())
+  description String
+  hours       Float       @default(0)
+  rate        Float       @default(0)
+  pricingType String      @default("hourly")
+  sortOrder   Int         @default(0)
+  presetId    String
+  preset      LaborPreset @relation(fields: [presetId], references: [id], onDelete: Cascade)
+
+  @@index([presetId])
+  @@map("labor_preset_items")
+}
+
+model LaborPresetPart {
+  id              String  @id @default(cuid())
+  name            String
+  partNumber      String?
+  quantity        Float   @default(1)
+  unitPrice       Float   @default(0)
+  inventoryPartId String?
+  sortOrder       Int     @default(0)
+
+  presetId String
+  preset   LaborPreset @relation(fields: [presetId], references: [id], onDelete: Cascade)
+
+  @@index([presetId])
+  @@map("labor_preset_parts")
+}
+
+model InventoryPart {
+  id            String   @id @default(cuid())
+  partNumber    String?
+  barcode       String?
+  name          String
+  description   String?
+  category      String?
+  quantity      Int      @default(0)
+  minQuantity   Int      @default(0)
+  unitCost      Float    @default(0)
+  sellPrice     Float    @default(0)
+  supplier      String?
+  supplierPhone String?
+  supplierEmail String?
+  supplierUrl   String?
+  imageUrl      String?
+  location      String?
+  isArchived    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  gallery StoredImage[] @relation("InventoryPartImages")
+
+  @@index([organizationId])
+  @@map("inventory_parts")
+}
+
+model StoredImage {
+  id          String   @id @default(cuid())
+  url         String
+  fileName    String?
+  description String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  inventoryPartId String?
+  inventoryPart   InventoryPart? @relation("InventoryPartImages", fields: [inventoryPartId], references: [id], onDelete: Cascade)
+
+  @@index([inventoryPartId])
+  @@map("stored_images")
+}
+
+model Quote {
+  id              String    @id @default(cuid())
+  quoteNumber     String?
+  title           String
+  description     String?
+  status          String    @default("draft")
+  validUntil      DateTime?
+  subtotal        Float     @default(0)
+  taxRate         Float     @default(0)
+  taxAmount       Float     @default(0)
+  taxInclusive    Boolean   @default(false)
+  discountType    String?
+  discountValue   Float     @default(0)
+  discountAmount  Float     @default(0)
+  totalAmount     Float     @default(0)
+  notes           String?
+  publicToken     String?
+  sharedAt        DateTime?
+  viewCount       Int       @default(0)
+  lastViewedAt    DateTime?
+  customerMessage String?
+  convertedToId   String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  vehicleId String?
+  vehicle   Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
+  inspectionId String?
+  inspection   Inspection? @relation(fields: [inspectionId], references: [id], onDelete: SetNull)
+
+  partItems   QuotePart[]
+  laborItems  QuoteLabor[]
+  attachments QuoteAttachment[]
+
+  @@index([organizationId])
+  @@map("quotes")
+}
+
+model QuoteAttachment {
+  id               String   @id @default(cuid())
+  fileName         String
+  fileUrl          String
+  fileType         String
+  fileSize         Int
+  category         String   @default("image")
+  description      String?
+  includeInInvoice Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  quoteId String
+  quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId])
+  @@map("quote_attachments")
+}
+
+model QuotePart {
+  id         String  @id @default(cuid())
+  partNumber String?
+  name       String
+  quantity   Float   @default(1)
+  unitPrice  Float   @default(0)
+  total      Float   @default(0)
+  excluded   Boolean @default(false)
+
+  quoteId String
+  quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId])
+  @@map("quote_parts")
+}
+
+model QuoteLabor {
+  id          String  @id @default(cuid())
+  description String
+  hours       Float   @default(0)
+  rate        Float   @default(0)
+  total       Float   @default(0)
+  pricingType String  @default("hourly")
+  excluded    Boolean @default(false)
+
+  quoteId String
+  quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId])
+  @@map("quote_labor")
+}
+
+model CustomFieldDefinition {
+  id         String   @id @default(cuid())
+  name       String
+  label      String
+  fieldType  String   @default("text")
+  options    String?
+  required   Boolean  @default(false)
+  entityType String
+  sortOrder  Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  values CustomFieldValue[]
+
+  @@unique([organizationId, name, entityType])
+  @@index([organizationId])
+  @@map("custom_field_definitions")
+}
+
+model CustomFieldValue {
+  id         String @id @default(cuid())
+  value      String
+  entityId   String
+  entityType String
+
+  fieldId String
+  field   CustomFieldDefinition @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@unique([fieldId, entityId])
+  @@index([fieldId])
+  @@map("custom_field_values")
+}
+
+model Organization {
+  id         String   @id @default(cuid())
+  name       String
+  portalSlug String?  @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  members                OrganizationMember[]
+  roles                  Role[]
+  vehicles               Vehicle[]
+  customers              Customer[]
+  quotes                 Quote[]
+  inventoryParts         InventoryPart[]
+  laborPresets           LaborPreset[]
+  customFieldDefinitions CustomFieldDefinition[]
+  settings               AppSetting[]
+  subscription           Subscription?
+  invitations            TeamInvitation[]
+  inspectionTemplates    InspectionTemplate[]
+  smsMessages            SmsMessage[]
+  telegramMessages       TelegramMessage[]
+  technicians            Technician[]
+  auditLogs              AuditLog[]
+  statusReports          StatusReport[]
+  reportSchedules        ReportSchedule[]
+  webhooks               Webhook[]
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id   String @id @default(cuid())
+  role String @default("member")
+
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  roleId     String?
+  customRole Role?   @relation(fields: [roleId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, organizationId])
+  @@map("organization_members")
+}
+
+model Role {
+  id        String   @id @default(cuid())
+  name      String
+  isAdmin   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  permissions     Permission[]
+  members         OrganizationMember[]
+  teamInvitations TeamInvitation[]
+
+  @@unique([organizationId, name])
+  @@map("roles")
+}
+
+model Permission {
+  id      String @id @default(cuid())
+  action  String
+  subject String
+
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, action, subject])
+  @@index([roleId])
+  @@map("permissions")
+}
+
+model SystemSetting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+
+  @@map("system_settings")
+}
+
+model TeamInvitation {
+  id             String       @id @default(cuid())
+  email          String
+  role           String       @default("member")
+  token          String       @unique
+  status         String       @default("pending") // pending | accepted | cancelled
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedById    String
+
+  roleId     String?
+  customRole Role?   @relation(fields: [roleId], references: [id], onDelete: SetNull)
+
+  @@unique([email, organizationId])
+  @@index([token])
+  @@map("team_invitations")
+}
+
+// Stripe-ready models (implementation in follow-up)
+
+model SubscriptionPlan {
+  id            String   @id @default(cuid())
+  name          String
+  stripePriceId String?  @unique
+  price         Float    @default(0)
+  interval      String   @default("month") // "month" | "year"
+  maxMembers    Int      @default(1)
+  features      String? // JSON feature flags
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  subscriptions Subscription[]
+
+  @@map("subscription_plans")
+}
+
+model Subscription {
+  id                   String    @id @default(cuid())
+  status               String    @default("active") // active | canceled | past_due | trialing
+  stripeSubscriptionId String?   @unique
+  stripeCustomerId     String?
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  planId String
+  plan   SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  @@map("subscriptions")
+}
+
+model RecurringInvoice {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  frequency   String // "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly"
+  nextRunDate DateTime
+  endDate     DateTime?
+  isActive    Boolean   @default(true)
+  lastRunAt   DateTime?
+  runCount    Int       @default(0)
+
+  // Template fields (copied to ServiceRecord on generation)
+  type         String  @default("maintenance")
+  cost         Float   @default(0)
+  taxRate      Float   @default(0)
+  taxInclusive Boolean @default(false)
+  invoiceNotes String?
+
+  vehicleId String
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  templateParts RecurringPart[]
+  templateLabor RecurringLabor[]
+
+  @@index([vehicleId])
+  @@index([nextRunDate, isActive])
+  @@map("recurring_invoices")
+}
+
+model RecurringPart {
+  id         String  @id @default(cuid())
+  name       String
+  partNumber String?
+  quantity   Int     @default(1)
+  unitPrice  Float   @default(0)
+
+  recurringInvoiceId String
+  recurringInvoice   RecurringInvoice @relation(fields: [recurringInvoiceId], references: [id], onDelete: Cascade)
+
+  @@map("recurring_parts")
+}
+
+model RecurringLabor {
+  id          String @id @default(cuid())
+  description String
+  hours       Float  @default(0)
+  rate        Float  @default(0)
+  pricingType String @default("hourly")
+
+  recurringInvoiceId String
+  recurringInvoice   RecurringInvoice @relation(fields: [recurringInvoiceId], references: [id], onDelete: Cascade)
+
+  @@map("recurring_labor")
+}
+
+model InspectionTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  sections    InspectionTemplateSection[]
+  inspections Inspection[]
+
+  @@index([organizationId])
+  @@map("inspection_templates")
+}
+
+model InspectionTemplateSection {
+  id        String @id @default(cuid())
+  name      String
+  sortOrder Int    @default(0)
+
+  templateId String
+  template   InspectionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  items InspectionTemplateItem[]
+
+  @@index([templateId])
+  @@map("inspection_template_sections")
+}
+
+model InspectionTemplateItem {
+  id        String @id @default(cuid())
+  name      String
+  sortOrder Int    @default(0)
+
+  sectionId String
+  section   InspectionTemplateSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@index([sectionId])
+  @@map("inspection_template_items")
+}
+
+model Inspection {
+  id            String    @id @default(cuid())
+  status        String    @default("in_progress")
+  mileage       Int?
+  notes         String?
+  startDateTime DateTime?
+  endDateTime   DateTime?
+  publicToken   String?   @unique
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  vehicleId String
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  templateId String
+  template   InspectionTemplate @relation(fields: [templateId], references: [id])
+
+  technicianId String?
+  technician   Technician? @relation(fields: [technicianId], references: [id], onDelete: SetNull)
+  sortOrder    Int         @default(0)
+
+  organizationId String
+
+  items         InspectionItem[]
+  quoteRequests InspectionQuoteRequest[]
+  quotes        Quote[]
+
+  @@index([vehicleId])
+  @@index([organizationId])
+  @@index([technicianId])
+  @@map("inspections")
+}
+
+model InspectionItem {
+  id        String   @id @default(cuid())
+  name      String
+  section   String
+  sortOrder Int      @default(0)
+  condition String   @default("not_inspected")
+  notes     String?
+  imageUrls String[] @default([])
+
+  inspectionId String
+  inspection   Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+
+  @@index([inspectionId])
+  @@map("inspection_items")
+}
+
+model InspectionQuoteRequest {
+  id              String   @id @default(cuid())
+  status          String   @default("pending")
+  message         String?
+  selectedItemIds String[]
+  createdAt       DateTime @default(now())
+
+  inspectionId String
+  inspection   Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+
+  organizationId String
+
+  @@index([organizationId])
+  @@index([inspectionId])
+  @@map("inspection_quote_requests")
+}
+
+model Notification {
+  id             String   @id @default(cuid())
+  type           String
+  title          String
+  message        String
+  entityType     String
+  entityId       String
+  entityUrl      String
+  read           Boolean  @default(false)
+  organizationId String
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, read])
+  @@map("notifications")
+}
+
+model SmsMessage {
+  id                String   @id @default(cuid())
+  direction         String // "inbound" | "outbound"
+  fromNumber        String
+  toNumber          String
+  body              String
+  status            String   @default("queued") // queued | sent | delivered | failed | received
+  providerMsgId     String?
+  errorMessage      String?
+  relatedEntityType String?
+  relatedEntityId   String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, customerId, createdAt(sort: Desc)])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([toNumber, organizationId])
+  @@map("sms_messages")
+}
+
+model TelegramMessage {
+  id                String   @id @default(cuid())
+  direction         String // "inbound" | "outbound"
+  chatId            String // Telegram chat ID
+  body              String
+  status            String   @default("queued") // queued | sent | delivered | failed | received
+  telegramMessageId String? // Telegram's message ID for tracking
+  errorMessage      String?
+  relatedEntityType String?
+  relatedEntityId   String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, customerId, createdAt(sort: Desc)])
+  @@index([organizationId, chatId, createdAt(sort: Desc)])
+  @@map("telegram_messages")
+}
+
+model Technician {
+  id            String  @id @default(cuid())
+  name          String
+  color         String  @default("#3b82f6")
+  isActive      Boolean @default(true)
+  sortOrder     Int     @default(0)
+  dailyCapacity Int     @default(480)
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  serviceRecords ServiceRecord[]
+  inspections    Inspection[]
+  statusReports  StatusReport[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@map("technicians")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  timestamp DateTime @default(now())
+  action    String
+  entity    String?
+  entityId  String?
+  message   String?
+  metadata  Json?
+  ip        String?
+  userAgent String?
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, timestamp(sort: Desc)])
+  @@index([userId, timestamp(sort: Desc)])
+  @@index([action, timestamp(sort: Desc)])
+  @@map("audit_logs")
+}
+
+model CustomerSession {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  organizationId String
+
+  @@index([token])
+  @@index([customerId, organizationId])
+  @@map("customer_sessions")
+}
+
+model CustomerMagicLink {
+  id             String    @id @default(cuid())
+  token          String    @unique
+  email          String
+  organizationId String
+  expiresAt      DateTime
+  usedAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([token])
+  @@map("customer_magic_links")
+}
+
+model CustomerSmsCode {
+  id             String    @id @default(cuid())
+  code           String
+  phone          String
+  organizationId String
+  expiresAt      DateTime
+  usedAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([phone, organizationId])
+  @@index([organizationId])
+  @@map("customer_sms_codes")
+}
+
+model ServiceRequest {
+  id            String    @id @default(cuid())
+  description   String
+  preferredDate DateTime?
+  status        String    @default("pending")
+  adminNotes    String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  vehicleId      String
+  vehicle        Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  organizationId String
+
+  @@index([organizationId, status])
+  @@index([customerId])
+  @@map("service_requests")
+}
+
+model AiGeneratedMessage {
+  id        String   @id @default(cuid())
+  vehicleId String
+  type      String // "summary" | "common_issues" | etc.
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([vehicleId, type])
+  @@map("ai_generated_messages")
+}
+
+model AiChat {
+  id        String   @id @default(cuid())
+  title     String   @default("New chat")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId         String
+  organizationId String
+
+  messages AiChatMessage[]
+
+  @@index([organizationId, userId, updatedAt(sort: Desc)])
+  @@map("ai_chats")
+}
+
+model AiChatMessage {
+  id        String   @id @default(cuid())
+  role      String // "user" | "assistant"
+  content   String
+  createdAt DateTime @default(now())
+
+  chatId String
+  chat   AiChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@index([chatId, createdAt])
+  @@map("ai_chat_messages")
+}
+
+model StatusReport {
+  id               String    @id @default(cuid())
+  title            String?
+  message          String?   @db.Text
+  videoUrl         String?
+  videoFileName    String?
+  publicToken      String    @unique
+  status           String    @default("draft") // draft | published | sent | viewed
+  sentVia          String? // email, sms, telegram (comma-separated)
+  sentAt           DateTime?
+  viewedAt         DateTime?
+  customerFeedback String?   @db.Text
+  feedbackAt       DateTime?
+  expiresAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  serviceRecordId String
+  serviceRecord   ServiceRecord @relation(fields: [serviceRecordId], references: [id], onDelete: Cascade)
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  technicianId String?
+  technician   Technician? @relation(fields: [technicianId], references: [id], onDelete: SetNull)
+
+  @@index([serviceRecordId])
+  @@index([organizationId])
+  @@index([publicToken])
+  @@index([expiresAt])
+  @@map("status_reports")
+}
+
+model ReportSchedule {
+  id          String    @id @default(cuid())
+  name        String    @default("Scheduled Report")
+  frequency   String // "daily" | "weekly" | "monthly" etc.
+  dateRange   String    @default("last30d") // "last1d" | "last7d" | "last30d" | "ytd" | "allTime" etc.
+  sections    String // JSON array of section keys
+  recipients  String // JSON array of user IDs
+  nextRunDate DateTime
+  endDate     DateTime?
+  isActive    Boolean   @default(true)
+  lastRunAt   DateTime?
+  runCount    Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdById String
+
+  @@index([organizationId])
+  @@index([nextRunDate, isActive])
+  @@map("report_schedules")
+}
+
+model Webhook {
+  id              String    @id @default(cuid())
+  name            String
+  url             String
+  secret          String
+  events          String // JSON array of event names; "*" matches all
+  isActive        Boolean   @default(true)
+  description     String?
+  lastTriggeredAt DateTime?
+  lastSuccessAt   DateTime?
+  lastFailureAt   DateTime?
+  failureCount    Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdById String
+
+  deliveries WebhookDelivery[]
+
+  @@index([organizationId])
+  @@index([organizationId, isActive])
+  @@map("webhooks")
+}
+
+model WebhookDelivery {
+  id           String    @id @default(cuid())
+  event        String
+  payload      String // JSON-stringified event payload as sent
+  status       String    @default("pending") // pending | success | failed | retrying
+  statusCode   Int?
+  responseBody String?
+  errorMessage String?
+  attempt      Int       @default(0)
+  maxAttempts  Int       @default(5)
+  nextRetryAt  DateTime?
+  deliveredAt  DateTime?
+  durationMs   Int?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  webhookId String
+  webhook   Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId, createdAt(sort: Desc)])
+  @@index([status, nextRetryAt])
+  @@map("webhook_deliveries")
+}

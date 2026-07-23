@@ -1,0 +1,81 @@
+{
+  "page": {
+    "error": "İş panosu yüklenemedi"
+  },
+  "toolbar": {
+    "today": "Bugün",
+    "day": "Gün",
+    "week": "Hafta",
+    "presenter": "Sunucu",
+    "addTechnician": "Teknisyen Ekle",
+    "previousWeek": "Previous week",
+    "nextWeek": "Next week",
+    "previousDay": "Previous day",
+    "nextDay": "Next day"
+  },
+  "board": {
+    "days": {
+      "mon": "Pzt",
+      "tue": "Sal",
+      "wed": "Çar",
+      "thu": "Per",
+      "fri": "Cum",
+      "sat": "Cmt",
+      "sun": "Paz"
+    },
+    "noTechnicians": "Henüz Teknisyen Yok",
+    "noTechniciansDescription": "Panoda iş planlamaya başlamak için bir teknisyen ekleyin.",
+    "failedMove": "Atama taşınamadı",
+    "failedAssign": "İş atanmadı",
+    "failedRemove": "Atama kaldırılamadı",
+    "createNewWorkorder": "Yeni iş emri oluştur"
+  },
+  "unassigned": {
+    "title": "Atanmamış İşler ({count})",
+    "searchPlaceholder": "İş ara...",
+    "empty": "Atanmamış iş yok"
+  },
+  "technician": {
+    "editTitle": "Teknisyeni Düzenle",
+    "addTitle": "Teknisyen Ekle",
+    "name": "Ad",
+    "namePlaceholder": "örn. Ahmet Yılmaz",
+    "color": "Renk",
+    "linkMember": "Org Üyesine Bağla (isteğe bağlı)",
+    "standalone": "Bağımsız teknisyen",
+    "deleteTitle": "Teknisyeni Sil",
+    "deleteDescription": "\"{name}\" öğesini iş panosundan kaldırılsın mı? Mevcut atamaları da kaldırılacaktır.",
+    "addTechnician": "Teknisyen Ekle"
+  },
+  "jobDetail": {
+    "viewDetails": "Ayrıntıları Görüntüle",
+    "remove": "Kaldır",
+    "endBeforeStart": "Bitiş zamanı başlangıç zamanından sonra olmalıdır",
+    "endTime": "Bitiş Zamanı",
+    "failedDuration": "Süre güncellenemedi",
+    "failedTimes": "Zamanlar güncellenemedi",
+    "startTime": "Başlangıç Zamanı"
+  },
+  "presenter": {
+    "title": "İş Panosu",
+    "day": "Gün",
+    "status": "Durum",
+    "week": "Hafta",
+    "today": "Bugün",
+    "timeline": "Zaman çizelgesi",
+    "live": "Canlı",
+    "disconnected": "Canlı güncellemeler kesildi",
+    "noTechnicians": "Hiçbir teknisyen yapılandırılmadı",
+    "noJobsToday": "Bugün iş yok",
+    "job": "{count} iş",
+    "jobs": "{count} iş",
+    "statusLabels": {
+      "pending": "Beklemede",
+      "inProgress": "Devam Ediyor",
+      "waitingParts": "Parça Bekleniyor",
+      "completed": "Tamamlandı"
+    },
+    "previous": "Previous",
+    "next": "Next"
+  }
+}

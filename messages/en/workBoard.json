@@ -1,0 +1,81 @@
+{
+  "page": {
+    "error": "Failed to load work board"
+  },
+  "toolbar": {
+    "today": "Today",
+    "day": "Day",
+    "week": "Week",
+    "presenter": "Presenter",
+    "addTechnician": "Add Technician",
+    "previousWeek": "Previous week",
+    "nextWeek": "Next week",
+    "previousDay": "Previous day",
+    "nextDay": "Next day"
+  },
+  "board": {
+    "days": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    },
+    "noTechnicians": "No Technicians Yet",
+    "noTechniciansDescription": "Add a technician to start scheduling work on the board.",
+    "failedMove": "Failed to move assignment",
+    "failedAssign": "Failed to assign job",
+    "failedRemove": "Failed to remove assignment",
+    "createNewWorkorder": "Create new Workorder"
+  },
+  "unassigned": {
+    "title": "Unassigned Jobs ({count})",
+    "searchPlaceholder": "Search jobs...",
+    "empty": "No unassigned jobs"
+  },
+  "technician": {
+    "editTitle": "Edit Technician",
+    "addTitle": "Add Technician",
+    "name": "Name",
+    "namePlaceholder": "e.g. John Smith",
+    "color": "Color",
+    "linkMember": "Link to Org Member (optional)",
+    "standalone": "Standalone technician",
+    "deleteTitle": "Delete Technician",
+    "deleteDescription": "Remove \"{name}\" from the work board? Their existing assignments will also be removed.",
+    "addTechnician": "Add Technician"
+  },
+  "jobDetail": {
+    "viewDetails": "View Details",
+    "remove": "Remove",
+    "startTime": "Start Time",
+    "endTime": "End Time",
+    "failedDuration": "Failed to update duration",
+    "failedTimes": "Failed to update times",
+    "endBeforeStart": "End time must be after start time"
+  },
+  "presenter": {
+    "title": "Work Board",
+    "day": "Day",
+    "status": "Status",
+    "week": "Week",
+    "today": "Today",
+    "timeline": "Timeline",
+    "live": "Live",
+    "disconnected": "Live updates disconnected",
+    "noTechnicians": "No technicians configured",
+    "noJobsToday": "No jobs today",
+    "job": "{count} job",
+    "jobs": "{count} jobs",
+    "statusLabels": {
+      "pending": "Pending",
+      "inProgress": "In Progress",
+      "waitingParts": "Waiting Parts",
+      "completed": "Completed"
+    },
+    "previous": "Previous",
+    "next": "Next"
+  }
+}

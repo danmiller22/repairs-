@@ -1,0 +1,141 @@
+{
+  "myJobs": {
+    "title": "Mis trabajos activos",
+    "description": "Órdenes de trabajo asignadas a usted.",
+    "uploadFailed": "Error al subir la imagen",
+    "uploadSuccess": "{count} imagen(es) subida(s)",
+    "takePhoto": "Tomar foto",
+    "addPhoto": "Añadir foto",
+    "addVideo": "Añadir vídeo",
+    "videoUploadSuccess": "{count} vídeo(s) subido(s)",
+    "scanPart": "Escanear pieza",
+    "photo": "Foto",
+    "video": "Vídeo",
+    "parts": "Piezas",
+    "partAdded": "\"{name}\" añadido a la orden de trabajo",
+    "partAddFailed": "Error al añadir la pieza",
+    "inStock": "En stock: {quantity}",
+    "quantity": "Cantidad",
+    "addToJob": "Añadir {qty} al trabajo",
+    "statusReport": "Informe de estado",
+    "report": "Informe",
+    "observation": "Observación"
+  },
+  "recentActivity": "Actividad reciente",
+  "noRecentActivity": "Sin actividad reciente",
+  "recentObservations": "Observaciones recientes",
+  "noRecentObservations": "Sin observaciones abiertas",
+  "observations": {
+    "severity": "Gravedad",
+    "vehicle": "Vehículo",
+    "description": "Descripción",
+    "when": "Cuándo"
+  },
+  "unknownUser": "Usuario",
+  "stats": {
+    "activeJobs": "Trabajos activos",
+    "pending": "Pendientes",
+    "totalParts": "Total de piezas",
+    "totalCustomers": "Total de clientes"
+  },
+  "customize": "Personalizar",
+  "viewAll": "Ver todo",
+  "showCards": "Mostrar tarjetas",
+  "cards": {
+    "maintenance": "Mantenimiento previsto",
+    "reminders": "Recordatorios pendientes",
+    "inspections": "Inspecciones",
+    "quoteRequests": "Solicitudes de presupuesto",
+    "quoteResponses": "Respuestas de presupuesto",
+    "sms": "Mensajes recientes",
+    "notifications": "Notificaciones recientes",
+    "recentCompleted": "Completados recientemente",
+    "activeJobs": "Trabajos activos",
+    "recentObservations": "Observaciones recientes"
+  },
+  "maintenance": {
+    "title": "Mantenimiento previsto pendiente",
+    "description": "Basado en el historial de servicio y el kilometraje diario estimado",
+    "overdue": "Vencido",
+    "approaching": "Próximo",
+    "estimated": "Est. {mileage} {unit}",
+    "sinceLastService": "{mileage} {unit} desde el último servicio",
+    "certainty": "{percent}% de certeza",
+    "active": "Activos",
+    "dismissedTab": "Descartados",
+    "noActive": "No hay vehículos que requieran servicio actualmente.",
+    "dismissedOn": "Descartado el {date}",
+    "restore": "Restaurar",
+    "settingsAriaLabel": "Maintenance settings",
+    "dismissAriaLabel": "Dismiss"
+  },
+  "reminders": {
+    "title": "Recordatorios pendientes",
+    "overdue": "Vencidos",
+    "dueSoon": "Próximamente",
+    "noData": "No hay recordatorios próximos."
+  },
+  "messages": {
+    "title": "Mensajes recientes",
+    "viewAll": "Ver todos",
+    "you": "Usted: ",
+    "noData": "No hay mensajes recientes."
+  },
+  "notifications": {
+    "title": "Notificaciones recientes",
+    "noData": "No hay notificaciones recientes."
+  },
+  "inspections": {
+    "title": "Inspecciones",
+    "inProgress": "En progreso",
+    "completed": "Completadas",
+    "itemCount": "{inspected}/{total} elementos",
+    "noData": "No hay inspecciones."
+  },
+  "quoteRequests": {
+    "title": "Solicitudes de presupuesto",
+    "description": "Clientes que solicitan presupuestos a partir de inspecciones compartidas",
+    "pending": "Pendientes",
+    "createQuote": "Crear presupuesto",
+    "itemsRequested": "{count, plural, one {# elemento solicitado} other {# elementos solicitados}}",
+    "noData": "No hay solicitudes de presupuesto pendientes.",
+    "dismissAriaLabel": "Dismiss quote request"
+  },
+  "quoteResponses": {
+    "title": "Respuestas de presupuesto de clientes",
+    "description": "Presupuestos que los clientes han aceptado o en los que han solicitado cambios",
+    "accepted": "Aceptado",
+    "changesRequested": "Cambios solicitados",
+    "convertToWorkOrder": "Convertir en orden de trabajo",
+    "convert": "Convert",
+    "viewQuote": "Ver presupuesto",
+    "view": "View",
+    "noData": "No hay respuestas de clientes.",
+    "dismissAriaLabel": "Dismiss response"
+  },
+  "recentCompleted": {
+    "title": "Completados recientemente",
+    "date": "Fecha",
+    "vehicle": "Vehículo",
+    "customer": "Cliente",
+    "serviceTitle": "Título",
+    "total": "Total",
+    "empty": "Aún no hay servicios completados"
+  },
+  "activeJobsTable": {
+    "title": "Trabajos activos",
+    "vehicle": "Vehículo",
+    "customer": "Cliente",
+    "serviceTitle": "Título",
+    "status": "Estado",
+    "tech": "Técnico",
+    "empty": "No hay trabajos activos"
+  },
+  "relativeTime": {
+    "now": "ahora",
+    "minutes": "{count}m",
+    "hours": "{count}h",
+    "days": "{count}d"
+  },
+  "error": "Error al cargar el panel de control"
+}

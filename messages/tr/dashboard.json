@@ -1,0 +1,141 @@
+{
+  "myJobs": {
+    "title": "Aktif İşlerim",
+    "description": "Size atanan iş emirleri.",
+    "uploadFailed": "Görsel yüklenemedi",
+    "uploadSuccess": "{count} görsel yüklendi",
+    "takePhoto": "Fotoğraf çek",
+    "addPhoto": "Fotoğraf ekle",
+    "addVideo": "Video ekle",
+    "videoUploadSuccess": "{count} video yüklendi",
+    "scanPart": "Parça tara",
+    "photo": "Fotoğraf",
+    "video": "Video",
+    "parts": "Parçalar",
+    "partAdded": "\"{name}\" iş emrine eklendi",
+    "partAddFailed": "Parça eklenemedi",
+    "inStock": "Stokta: {quantity}",
+    "quantity": "Miktar",
+    "addToJob": "{qty} işe ekle",
+    "statusReport": "Durum Raporu",
+    "report": "Rapor",
+    "observation": "Gözlem"
+  },
+  "recentActivity": "Son aktivite",
+  "noRecentActivity": "Son aktivite yok",
+  "recentObservations": "Son Gözlemler",
+  "noRecentObservations": "Açık gözlem yok",
+  "observations": {
+    "severity": "Önem",
+    "vehicle": "Araç",
+    "description": "Açıklama",
+    "when": "Ne zaman"
+  },
+  "unknownUser": "Kullanıcı",
+  "stats": {
+    "activeJobs": "Aktif İşler",
+    "pending": "Beklemede",
+    "totalParts": "Toplam Parça",
+    "totalCustomers": "Toplam Müşteriler"
+  },
+  "customize": "Özelleştir",
+  "viewAll": "Tümünü Gör",
+  "showCards": "Kartları göster",
+  "cards": {
+    "maintenance": "Tahmini Bakım",
+    "reminders": "Yaklaşan Hatırlatmalar",
+    "inspections": "Muayeneler",
+    "quoteRequests": "Teklif Talepleri",
+    "quoteResponses": "Teklif Yanıtları",
+    "sms": "Son Mesajlar",
+    "notifications": "Son Bildirimler",
+    "recentCompleted": "Son Tamamlananlar",
+    "activeJobs": "Aktif İşler",
+    "recentObservations": "Son Gözlemler"
+  },
+  "maintenance": {
+    "title": "Tahmini Bakım Zamanı",
+    "description": "Servis geçmişi ve tahmini günlük kilometre bazında",
+    "overdue": "Gecikmiş",
+    "approaching": "Yaklaşan",
+    "estimated": "Tahmini {mileage} {unit}",
+    "sinceLastService": "Son servisten bu yana {mileage} {unit}",
+    "certainty": "%{percent} kesinlik",
+    "active": "Aktif",
+    "dismissedTab": "Kapatılan",
+    "noActive": "Şu anda bakım gerektiren araç bulunmuyor.",
+    "dismissedOn": "{date} tarihinde kapatıldı",
+    "restore": "Geri Yükle",
+    "settingsAriaLabel": "Maintenance settings",
+    "dismissAriaLabel": "Dismiss"
+  },
+  "reminders": {
+    "title": "Yaklaşan Hatırlatmalar",
+    "overdue": "Gecikmiş",
+    "dueSoon": "Yakında",
+    "noData": "Yaklaşan hatırlatma yok."
+  },
+  "messages": {
+    "title": "Son Mesajlar",
+    "viewAll": "Tümünü Görüntüle",
+    "you": "Siz: ",
+    "noData": "Son mesaj yok."
+  },
+  "notifications": {
+    "title": "Son Bildirimler",
+    "noData": "Son bildirim yok."
+  },
+  "inspections": {
+    "title": "Muayeneler",
+    "inProgress": "Devam Ediyor",
+    "completed": "Tamamlandı",
+    "itemCount": "{inspected}/{total} öğe",
+    "noData": "İnceleme yok."
+  },
+  "quoteRequests": {
+    "title": "Teklif Talepleri",
+    "description": "Paylaşılan muayenelerden teklif talep eden müşteriler",
+    "pending": "Beklemede",
+    "createQuote": "Teklif Oluştur",
+    "itemsRequested": "{count, plural, one {# öğe talep edildi} other {# öğe talep edildi}}",
+    "noData": "Bekleyen teklif talebi yok.",
+    "dismissAriaLabel": "Dismiss quote request"
+  },
+  "quoteResponses": {
+    "title": "Müşteri Teklif Yanıtları",
+    "description": "Müşterilerin kabul ettiği veya değişiklik talep ettiği teklifler",
+    "accepted": "Kabul Edildi",
+    "changesRequested": "Değişiklik Talep Edildi",
+    "convertToWorkOrder": "İş Emrine Dönüştür",
+    "convert": "Convert",
+    "viewQuote": "Teklifi Görüntüle",
+    "view": "View",
+    "noData": "Müşteri yanıtı yok.",
+    "dismissAriaLabel": "Dismiss response"
+  },
+  "recentCompleted": {
+    "title": "Son Tamamlananlar",
+    "date": "Tarih",
+    "vehicle": "Araç",
+    "customer": "Müşteri",
+    "serviceTitle": "Başlık",
+    "total": "Toplam",
+    "empty": "Henüz tamamlanmış servis bulunmamaktadır"
+  },
+  "activeJobsTable": {
+    "title": "Aktif İşler",
+    "vehicle": "Araç",
+    "customer": "Müşteri",
+    "serviceTitle": "Başlık",
+    "status": "Durum",
+    "tech": "Teknisyen",
+    "empty": "Aktif iş bulunmamaktadır"
+  },
+  "relativeTime": {
+    "now": "şimdi",
+    "minutes": "{count}dk",
+    "hours": "{count}sa",
+    "days": "{count}g"
+  },
+  "error": "Kontrol paneli yüklenemedi"
+}

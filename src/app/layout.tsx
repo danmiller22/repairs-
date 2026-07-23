@@ -1,0 +1,109 @@
+import type { Metadata } from 'next'
+import { NextIntlClientProvider } from 'next-intl'
+import { getLocale, getMessages } from 'next-intl/server'
+import { Toaster } from '@/components/ui/sonner'
+import { ThemeProvider } from '@/components/theme-provider'
+import { QueryProvider } from '@/lib/query-provider'
+import { GlassModal } from '@/components/glass-modal'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { PWAServiceWorker } from '@/components/pwa-service-worker'
+import { PostHogProvider } from '@/components/posthog-provider'
+import { isCloudMode } from '@/lib/features'
+import './globals.css'
+
+export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'US Team Fleet',
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
+  },
+  title: {
+    default: 'US Team Fleet',
+    template: '%s | US Team Fleet',
+  },
+  description:
+    'Self-hosted workshop management platform for automotive service businesses. Manage work orders, invoices, customers, inventory, and vehicle service history.',
+  keywords: [
+    'workshop management',
+    'automotive service',
+    'vehicle service',
+    'work orders',
+    'invoicing',
+    'inventory management',
+    'repair shop software',
+    'self-hosted',
+  ],
+  authors: [{ name: 'US Team Fleet' }],
+  creator: 'US Team Fleet',
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    siteName: 'US Team Fleet',
+    title: 'US Team Fleet',
+    description:
+      'Self-hosted workshop management platform for automotive service businesses. Manage work orders, invoices, customers, inventory, and vehicle service history.',
+    images: [
+      {
+        url: '/images/torqvoice_opengraph.png',
+        width: 1200,
+        height: 630,
+        alt: 'US Team Fleet',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'US Team Fleet',
+    description:
+      'Self-hosted workshop management platform for automotive service businesses. Manage work orders, invoices, customers, inventory, and vehicle service history.',
+    images: ['/images/torqvoice_opengraph.png'],
+  },
+}
+
+export default async function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>) {
+  const locale = await getLocale()
+  const messages = await getMessages()
+
+  return (
+    <html lang={locale} translate="no" suppressHydrationWarning>
+      <head>
+        <meta name="google" content="notranslate" />
+        <meta name="theme-color" content="#09090b" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var p=location.pathname;if(p.indexOf('/share/')===0||p.indexOf('/portal')===0){document.documentElement.classList.add('light');return}var t=localStorage.getItem('torqvoice-theme')||'dark';if(t==='system'){t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'}document.documentElement.classList.add(t)}catch(e){}})()`,
+          }}
+        />
+      </head>
+      <body className="font-sans antialiased">
+        <PostHogProvider
+          isCloud={isCloudMode()}
+          posthogKey={process.env.POSTHOG_KEY}
+          posthogHost={process.env.POSTHOG_HOST}
+        >
+          <NextIntlClientProvider messages={messages}>
+            <ThemeProvider defaultTheme="dark">
+              <QueryProvider>
+                <TooltipProvider>
+                  {children}
+                  <GlassModal />
+                  <Toaster richColors position="bottom-right" />
+                  <PWAServiceWorker />
+                </TooltipProvider>
+              </QueryProvider>
+            </ThemeProvider>
+          </NextIntlClientProvider>
+        </PostHogProvider>
+      </body>
+    </html>
+  )
+}

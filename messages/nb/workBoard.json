@@ -1,0 +1,81 @@
+{
+  "page": {
+    "error": "Kunne ikke laste arbeidstavle"
+  },
+  "toolbar": {
+    "today": "I dag",
+    "day": "Dag",
+    "week": "Uke",
+    "presenter": "Presentatør",
+    "addTechnician": "Legg til tekniker",
+    "previousWeek": "Previous week",
+    "nextWeek": "Next week",
+    "previousDay": "Previous day",
+    "nextDay": "Next day"
+  },
+  "board": {
+    "days": {
+      "mon": "Man",
+      "tue": "Tir",
+      "wed": "Ons",
+      "thu": "Tor",
+      "fri": "Fre",
+      "sat": "Lør",
+      "sun": "Søn"
+    },
+    "noTechnicians": "Ingen teknikere ennå",
+    "noTechniciansDescription": "Legg til en tekniker for å begynne å planlegge arbeid på tavlen.",
+    "failedMove": "Kunne ikke flytte tilordning",
+    "failedAssign": "Kunne ikke tilordne jobb",
+    "failedRemove": "Kunne ikke fjerne tilordning",
+    "createNewWorkorder": "Opprett ny arbeidsordre"
+  },
+  "unassigned": {
+    "title": "Utildelte jobber ({count})",
+    "searchPlaceholder": "Søk jobber...",
+    "empty": "Ingen utildelte jobber"
+  },
+  "technician": {
+    "editTitle": "Rediger tekniker",
+    "addTitle": "Legg til tekniker",
+    "name": "Navn",
+    "namePlaceholder": "f.eks. John Smith",
+    "color": "Farge",
+    "linkMember": "Koble til organisasjonsmedlem (valgfritt)",
+    "standalone": "Uavhengig tekniker",
+    "deleteTitle": "Slett tekniker",
+    "deleteDescription": "Fjern \"{name}\" fra arbeidstavlen? Deres eksisterende tilordninger vil også bli fjernet.",
+    "addTechnician": "Legg til tekniker"
+  },
+  "jobDetail": {
+    "viewDetails": "Vis detaljer",
+    "remove": "Fjern",
+    "startTime": "Starttid",
+    "endTime": "Sluttid",
+    "failedDuration": "Kunne ikke oppdatere varighet",
+    "failedTimes": "Kunne ikke oppdatere tider",
+    "endBeforeStart": "Sluttid må være etter starttid"
+  },
+  "presenter": {
+    "title": "Arbeidstavle",
+    "day": "Dag",
+    "status": "Status",
+    "week": "Uke",
+    "today": "I dag",
+    "timeline": "Tidslinje",
+    "live": "Direkte",
+    "disconnected": "Direkteoppdateringer frakoblet",
+    "noTechnicians": "Ingen teknikere konfigurert",
+    "noJobsToday": "Ingen jobber i dag",
+    "job": "{count} jobb",
+    "jobs": "{count} jobber",
+    "statusLabels": {
+      "pending": "Avventende",
+      "inProgress": "Pågår",
+      "waitingParts": "Venter på deler",
+      "completed": "Fullført"
+    },
+    "previous": "Previous",
+    "next": "Next"
+  }
+}

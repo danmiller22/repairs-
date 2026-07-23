@@ -1,0 +1,141 @@
+{
+  "myJobs": {
+    "title": "Mine aktive jobber",
+    "description": "Arbeidsordrer tildelt deg.",
+    "uploadFailed": "Kunne ikke laste opp bilde",
+    "uploadSuccess": "{count} bilde(r) lastet opp",
+    "takePhoto": "Ta bilde",
+    "addPhoto": "Legg til bilde",
+    "addVideo": "Legg til video",
+    "videoUploadSuccess": "{count} video(er) lastet opp",
+    "scanPart": "Skann del",
+    "photo": "Bilde",
+    "video": "Video",
+    "parts": "Deler",
+    "partAdded": "\"{name}\" lagt til i arbeidsordre",
+    "partAddFailed": "Kunne ikke legge til del",
+    "inStock": "På lager: {quantity}",
+    "quantity": "Antall",
+    "addToJob": "Legg til {qty} i jobb",
+    "statusReport": "Statusrapport",
+    "report": "Rapport",
+    "observation": "Observasjon"
+  },
+  "recentActivity": "Nylig aktivitet",
+  "noRecentActivity": "Ingen nylig aktivitet",
+  "recentObservations": "Nylige observasjoner",
+  "noRecentObservations": "Ingen åpne observasjoner",
+  "observations": {
+    "severity": "Alvorlighetsgrad",
+    "vehicle": "Kjøretøy",
+    "description": "Beskrivelse",
+    "when": "Når"
+  },
+  "unknownUser": "Bruker",
+  "stats": {
+    "activeJobs": "Aktive jobber",
+    "pending": "Ventende",
+    "totalParts": "Totale deler",
+    "totalCustomers": "Totalt antall kunder"
+  },
+  "customize": "Tilpass",
+  "viewAll": "Vis alle",
+  "showCards": "Vis kort",
+  "cards": {
+    "maintenance": "Forventet vedlikehold",
+    "reminders": "Kommende påminnelser",
+    "inspections": "Inspeksjoner",
+    "quoteRequests": "Tilbudsforespørsler",
+    "quoteResponses": "Tilbudssvar",
+    "sms": "Siste meldinger",
+    "notifications": "Siste varsler",
+    "recentCompleted": "Nylig fullført",
+    "activeJobs": "Aktive jobber",
+    "recentObservations": "Nylige observasjoner"
+  },
+  "maintenance": {
+    "title": "Forventet vedlikehold",
+    "description": "Basert på servicehistorikk og estimert daglig kjørelengde",
+    "overdue": "Forfalt",
+    "approaching": "Nærmer seg",
+    "estimated": "Est. {mileage} {unit}",
+    "sinceLastService": "{mileage} {unit} siden siste service",
+    "certainty": "{percent} % sikkerhet",
+    "active": "Aktive",
+    "dismissedTab": "Avvist",
+    "noActive": "Ingen kjøretøy trenger service for øyeblikket.",
+    "dismissedOn": "Avvist {date}",
+    "restore": "Gjenopprett",
+    "settingsAriaLabel": "Maintenance settings",
+    "dismissAriaLabel": "Dismiss"
+  },
+  "reminders": {
+    "title": "Kommende påminnelser",
+    "overdue": "Forfalt",
+    "dueSoon": "Forfaller snart",
+    "noData": "Ingen kommende påminnelser."
+  },
+  "messages": {
+    "title": "Siste meldinger",
+    "viewAll": "Vis alle",
+    "you": "Du: ",
+    "noData": "Ingen nylige meldinger."
+  },
+  "notifications": {
+    "title": "Siste varsler",
+    "noData": "Ingen nylige varsler."
+  },
+  "inspections": {
+    "title": "Inspeksjoner",
+    "inProgress": "Pågår",
+    "completed": "Fullført",
+    "itemCount": "{inspected}/{total} punkter",
+    "noData": "Ingen inspeksjoner."
+  },
+  "quoteRequests": {
+    "title": "Tilbudsforespørsler",
+    "description": "Kunder som ber om tilbud fra delte inspeksjoner",
+    "pending": "Ventende",
+    "createQuote": "Opprett tilbud",
+    "itemsRequested": "{count, plural, one {# punkt forespurt} other {# punkter forespurt}}",
+    "noData": "Ingen ventende tilbudsforespørsler.",
+    "dismissAriaLabel": "Dismiss quote request"
+  },
+  "quoteResponses": {
+    "title": "Kundens tilbudssvar",
+    "description": "Tilbud som kunder har akseptert eller bedt om endringer på",
+    "accepted": "Akseptert",
+    "changesRequested": "Endringer forespurt",
+    "convertToWorkOrder": "Konverter til arbeidsordre",
+    "convert": "Convert",
+    "viewQuote": "Vis tilbud",
+    "view": "View",
+    "noData": "Ingen kundesvar.",
+    "dismissAriaLabel": "Dismiss response"
+  },
+  "recentCompleted": {
+    "title": "Nylig fullført",
+    "date": "Dato",
+    "vehicle": "Kjøretøy",
+    "customer": "Kunde",
+    "serviceTitle": "Tittel",
+    "total": "Totalt",
+    "empty": "Ingen fullførte tjenester ennå"
+  },
+  "activeJobsTable": {
+    "title": "Aktive jobber",
+    "vehicle": "Kjøretøy",
+    "customer": "Kunde",
+    "serviceTitle": "Tittel",
+    "status": "Status",
+    "tech": "Tekniker",
+    "empty": "Ingen aktive jobber"
+  },
+  "relativeTime": {
+    "now": "nå",
+    "minutes": "{count}m",
+    "hours": "{count}t",
+    "days": "{count}d"
+  },
+  "error": "Kunne ikke laste dashbord"
+}

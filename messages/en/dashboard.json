@@ -1,0 +1,141 @@
+{
+  "myJobs": {
+    "title": "My Active Jobs",
+    "description": "Work orders assigned to you.",
+    "uploadFailed": "Failed to upload image",
+    "uploadSuccess": "{count} image(s) uploaded",
+    "takePhoto": "Take photo",
+    "addPhoto": "Add photo",
+    "addVideo": "Add video",
+    "videoUploadSuccess": "{count} video(s) uploaded",
+    "scanPart": "Scan part",
+    "photo": "Photo",
+    "video": "Video",
+    "parts": "Parts",
+    "partAdded": "Added \"{name}\" to work order",
+    "partAddFailed": "Failed to add part",
+    "inStock": "In stock: {quantity}",
+    "quantity": "Quantity",
+    "addToJob": "Add {qty} to job",
+    "statusReport": "Status Report",
+    "report": "Report",
+    "observation": "Observation"
+  },
+  "recentActivity": "Recent Activity",
+  "noRecentActivity": "No recent activity",
+  "recentObservations": "Recent Observations",
+  "noRecentObservations": "No open observations",
+  "observations": {
+    "severity": "Severity",
+    "vehicle": "Vehicle",
+    "description": "Description",
+    "when": "When"
+  },
+  "unknownUser": "User",
+  "stats": {
+    "activeJobs": "Active Jobs",
+    "pending": "Pending",
+    "totalParts": "Total Parts",
+    "totalCustomers": "Total Customers"
+  },
+  "customize": "Customize",
+  "viewAll": "View All",
+  "showCards": "Show cards",
+  "cards": {
+    "maintenance": "Predicted Maintenance",
+    "reminders": "Upcoming Reminders",
+    "inspections": "Inspections",
+    "quoteRequests": "Quote Requests",
+    "quoteResponses": "Quote Responses",
+    "sms": "Recent Messages",
+    "notifications": "Recent Notifications",
+    "recentCompleted": "Recent Completed",
+    "activeJobs": "Active Jobs",
+    "recentObservations": "Recent Observations"
+  },
+  "maintenance": {
+    "title": "Predicted Maintenance Due",
+    "description": "Based on service history and estimated daily mileage",
+    "overdue": "Overdue",
+    "approaching": "Approaching",
+    "estimated": "Est. {mileage} {unit}",
+    "sinceLastService": "{mileage} {unit} since last service",
+    "certainty": "{percent}% certainty",
+    "active": "Active",
+    "dismissedTab": "Dismissed",
+    "noActive": "No vehicles currently due for service.",
+    "dismissedOn": "Dismissed {date}",
+    "restore": "Restore",
+    "settingsAriaLabel": "Maintenance settings",
+    "dismissAriaLabel": "Dismiss"
+  },
+  "reminders": {
+    "title": "Upcoming Reminders",
+    "overdue": "Overdue",
+    "dueSoon": "Due Soon",
+    "noData": "No upcoming reminders."
+  },
+  "messages": {
+    "title": "Recent Messages",
+    "viewAll": "View All",
+    "you": "You: ",
+    "noData": "No recent messages."
+  },
+  "notifications": {
+    "title": "Recent Notifications",
+    "noData": "No recent notifications."
+  },
+  "inspections": {
+    "title": "Inspections",
+    "inProgress": "In Progress",
+    "completed": "Completed",
+    "itemCount": "{inspected}/{total} items",
+    "noData": "No inspections."
+  },
+  "quoteRequests": {
+    "title": "Quote Requests",
+    "description": "Customers requesting quotes from shared inspections",
+    "pending": "Pending",
+    "createQuote": "Create Quote",
+    "itemsRequested": "{count, plural, one {# item requested} other {# items requested}}",
+    "noData": "No pending quote requests.",
+    "dismissAriaLabel": "Dismiss quote request"
+  },
+  "quoteResponses": {
+    "title": "Customer Quote Responses",
+    "description": "Quotes that customers have accepted or requested changes on",
+    "accepted": "Accepted",
+    "changesRequested": "Changes Requested",
+    "convertToWorkOrder": "Convert to Work Order",
+    "convert": "Convert",
+    "viewQuote": "View Quote",
+    "view": "View",
+    "noData": "No customer responses.",
+    "dismissAriaLabel": "Dismiss response"
+  },
+  "recentCompleted": {
+    "title": "Recent Completed",
+    "date": "Date",
+    "vehicle": "Vehicle",
+    "customer": "Customer",
+    "serviceTitle": "Title",
+    "total": "Total",
+    "empty": "No completed services yet"
+  },
+  "activeJobsTable": {
+    "title": "Active Jobs",
+    "vehicle": "Vehicle",
+    "customer": "Customer",
+    "serviceTitle": "Title",
+    "status": "Status",
+    "tech": "Tech",
+    "empty": "No active jobs"
+  },
+  "relativeTime": {
+    "now": "now",
+    "minutes": "{count}m",
+    "hours": "{count}h",
+    "days": "{count}d"
+  },
+  "error": "Failed to load dashboard"
+}

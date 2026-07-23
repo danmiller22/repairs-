@@ -1,0 +1,81 @@
+{
+  "page": {
+    "error": "Werkbord kan niet worden geladen"
+  },
+  "toolbar": {
+    "today": "Vandaag",
+    "day": "Dag",
+    "week": "Week",
+    "presenter": "Presentator",
+    "addTechnician": "Technicus toevoegen",
+    "previousWeek": "Previous week",
+    "nextWeek": "Next week",
+    "previousDay": "Previous day",
+    "nextDay": "Next day"
+  },
+  "board": {
+    "days": {
+      "mon": "Ma",
+      "tue": "Di",
+      "wed": "Wo",
+      "thu": "Do",
+      "fri": "Vr",
+      "sat": "Za",
+      "sun": "Zo"
+    },
+    "noTechnicians": "Nog geen Technici",
+    "noTechniciansDescription": "Voeg een technicus toe om werk op het bord in te plannen.",
+    "failedMove": "Toewijzing verplaatsen mislukt",
+    "failedAssign": "Taak toewijzen mislukt",
+    "failedRemove": "Toewijzing verwijderen mislukt",
+    "createNewWorkorder": "Nieuwe werkorder aanmaken"
+  },
+  "unassigned": {
+    "title": "Niet-toegewezen taken ({count})",
+    "searchPlaceholder": "Taken zoeken...",
+    "empty": "Geen niet-toegewezen taken"
+  },
+  "technician": {
+    "editTitle": "Technicus bewerken",
+    "addTitle": "Technicus toevoegen",
+    "name": "Naam",
+    "namePlaceholder": "bijv. Jan de Vries",
+    "color": "Kleur",
+    "linkMember": "Koppelen aan organisatielid (optioneel)",
+    "standalone": "Onafhankelijke technicus",
+    "deleteTitle": "Technicus verwijderen",
+    "deleteDescription": "\"{name}\" van het werkbord verwijderen? Hun bestaande toewijzingen worden ook verwijderd.",
+    "addTechnician": "Technicus toevoegen"
+  },
+  "jobDetail": {
+    "viewDetails": "Details weergeven",
+    "remove": "Verwijderen",
+    "endBeforeStart": "Eindtijd moet na de starttijd liggen",
+    "endTime": "Eindtijd",
+    "failedDuration": "Kan duur niet bijwerken",
+    "failedTimes": "Kan tijden niet bijwerken",
+    "startTime": "Starttijd"
+  },
+  "presenter": {
+    "title": "Werkbord",
+    "day": "Dag",
+    "status": "Status",
+    "week": "Week",
+    "today": "Vandaag",
+    "timeline": "Tijdlijn",
+    "live": "Live",
+    "disconnected": "Live-updates verbroken",
+    "noTechnicians": "Geen technici geconfigureerd",
+    "noJobsToday": "Geen taken vandaag",
+    "job": "{count} taak",
+    "jobs": "{count} taken",
+    "statusLabels": {
+      "pending": "In afwachting",
+      "inProgress": "In uitvoering",
+      "waitingParts": "Wacht op onderdelen",
+      "completed": "Voltooid"
+    },
+    "previous": "Previous",
+    "next": "Next"
+  }
+}

@@ -4,14 +4,19 @@ import { useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
+  CircleAlert,
   Container,
   ExternalLink,
   Link2,
+  Loader2,
   MapPin,
   Pencil,
+  PlugZap,
   Plus,
   Radio,
+  RefreshCw,
   Search,
+  ShieldCheck,
   Truck,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -44,15 +49,15 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
-import { updateManualTrackingLocation } from '../Actions/trackingActions'
-import type { TrackingAsset } from '../types'
+import {
+  saveTrackingProviderConnection,
+  syncTrackingProvider,
+  updateManualTrackingLocation,
+} from '../Actions/trackingActions'
+import type { TrackingAsset, TrackingConnection } from '../types'
 import { TrackingMap } from './tracking-map-dynamic'
 
-const providers = [
-  { id: 'samsara', name: 'Samsara', scope: 'Trucks & trailers' },
-  { id: 'xtralease', name: 'XTRA Lease', scope: 'Trailers' },
-  { id: 'premier', name: 'Premier Trailer', scope: 'Trailers' },
-] as const
+type ConfigurableProvider = 'samsara' | 'xtralease'
 
 const statusStyles: Record<string, string> = {
   moving: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-500',
@@ -72,11 +77,19 @@ function formatLastSeen(value: string | null) {
   return date.toLocaleDateString()
 }
 
-export function TrackingClient({ assets }: { assets: TrackingAsset[] }) {
+export function TrackingClient({
+  assets,
+  connections = [],
+}: {
+  assets: TrackingAsset[]
+  connections?: TrackingConnection[]
+}) {
   const router = useRouter()
   const [filter, setFilter] = useState<'all' | 'truck' | 'trailer'>('all')
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<TrackingAsset | null>(null)
+  const [configuring, setConfiguring] = useState<ConfigurableProvider | null>(null)
+  const [syncing, setSyncing] = useState<ConfigurableProvider | null>(null)
   const [isPending, startTransition] = useTransition()
 
   const filteredAssets = useMemo(() => {
@@ -114,6 +127,54 @@ export function TrackingClient({ assets }: { assets: TrackingAsset[] }) {
         router.refresh()
       } else {
         toast.error(result.error || 'Could not update location')
+      }
+    })
+  }
+
+  const syncProvider = (provider: ConfigurableProvider) => {
+    setSyncing(provider)
+    startTransition(async () => {
+      const result = await syncTrackingProvider(provider)
+      if (result.success && result.data) {
+        const name = provider === 'samsara' ? 'Samsara' : 'XTRA Lease'
+        toast.success(
+          result.data.skipped
+            ? `${name} is already current. XTRA sync is limited to once every 30 minutes.`
+            : `${name} synced ${result.data.assetCount} units`
+        )
+        router.refresh()
+      } else {
+        toast.error(result.error || 'Tracking sync failed')
+        router.refresh()
+      }
+      setSyncing(null)
+    })
+  }
+
+  const saveConnection = (formData: FormData) => {
+    if (!configuring) return
+    const provider = configuring
+    startTransition(async () => {
+      const result =
+        provider === 'samsara'
+          ? await saveTrackingProviderConnection({
+              provider,
+              apiKey: formData.get('apiKey'),
+            })
+          : await saveTrackingProviderConnection({
+              provider,
+              username: formData.get('username'),
+              password: formData.get('password'),
+              serviceUrl: formData.get('serviceUrl'),
+              apiVersion: formData.get('apiVersion'),
+            })
+
+      if (result.success) {
+        toast.success(`${provider === 'samsara' ? 'Samsara' : 'XTRA Lease'} connection saved`)
+        setConfiguring(null)
+        router.refresh()
+      } else {
+        toast.error(result.error || 'Could not save connection')
       }
     })
   }
@@ -169,34 +230,87 @@ export function TrackingClient({ assets }: { assets: TrackingAsset[] }) {
         </Card>
 
         <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Link2 className="h-4 w-4 text-primary" />
-              Tracking connections
-            </CardTitle>
+          <CardHeader className="gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Link2 className="h-4 w-4 text-primary" />
+                Tracking connections
+              </CardTitle>
+              <Button variant="outline" size="sm" onClick={() => setConfiguring('samsara')}>
+                <PlugZap className="mr-1.5 h-3.5 w-3.5" />
+                Add provider
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground">
               Provider feeds will merge into the same truck and trailer list.
             </p>
           </CardHeader>
           <CardContent className="space-y-3">
-            {providers.map((provider) => (
-              <div
-                key={provider.id}
-                className="flex items-center justify-between rounded-lg border p-3"
-              >
-                <div>
-                  <p className="text-sm font-medium">{provider.name}</p>
-                  <p className="text-xs text-muted-foreground">{provider.scope}</p>
+            {connections.map((provider) => (
+              <div key={provider.id} className="space-y-2 rounded-lg border p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-medium">{provider.name}</p>
+                    <p className="text-xs text-muted-foreground">{provider.scope}</p>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      provider.error
+                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-500'
+                        : provider.configured
+                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500'
+                          : 'text-muted-foreground'
+                    )}
+                  >
+                    {provider.error
+                      ? 'Needs attention'
+                      : provider.configured
+                        ? 'Connected'
+                        : provider.available
+                          ? 'Not configured'
+                          : 'Coming soon'}
+                  </Badge>
                 </div>
-                <Badge variant="outline" className="border-primary/20 bg-primary/5 text-primary">
-                  Ready
-                </Badge>
+                {provider.error ? (
+                  <p className="flex gap-1.5 text-xs text-amber-500">
+                    <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    {provider.error}
+                  </p>
+                ) : provider.lastSyncedAt ? (
+                  <p className="text-xs text-muted-foreground">
+                    {provider.assetCount} units · synced {formatLastSeen(provider.lastSyncedAt)}
+                  </p>
+                ) : null}
+                {provider.available && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 flex-1 text-xs"
+                      onClick={() => setConfiguring(provider.id as ConfigurableProvider)}
+                    >
+                      {provider.configured ? 'Replace credentials' : 'Connect'}
+                    </Button>
+                    {provider.configured && (
+                      <Button
+                        size="sm"
+                        className="h-7 flex-1 text-xs"
+                        disabled={syncing === provider.id}
+                        onClick={() => syncProvider(provider.id as ConfigurableProvider)}
+                      >
+                        {syncing === provider.id ? (
+                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                        )}
+                        Sync now
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
-            <div className="rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground">
-              API credentials are not required yet. Until the integrations are connected, managers
-              can update a unit location manually.
-            </div>
           </CardContent>
         </Card>
       </div>
@@ -415,6 +529,103 @@ export function TrackingClient({ assets }: { assets: TrackingAsset[] }) {
                 </Button>
                 <Button type="submit" disabled={isPending}>
                   {isPending ? 'Saving…' : 'Save location'}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!configuring} onOpenChange={(open) => !open && setConfiguring(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Connect tracking provider</DialogTitle>
+            <DialogDescription>
+              Credentials are encrypted on the server and are never sent back to the browser.
+            </DialogDescription>
+          </DialogHeader>
+          {configuring && (
+            <form action={saveConnection} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="provider">Provider</Label>
+                <Select
+                  value={configuring}
+                  onValueChange={(value) => setConfiguring(value as ConfigurableProvider)}
+                >
+                  <SelectTrigger id="provider">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="samsara">Samsara</SelectItem>
+                    <SelectItem value="xtralease">XTRA Lease / SkyBitz</SelectItem>
+                    <SelectItem value="premier" disabled>
+                      Premier Trailer — coming soon
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {configuring === 'samsara' ? (
+                <div className="space-y-2">
+                  <Label htmlFor="apiKey">Samsara API token</Label>
+                  <Input
+                    id="apiKey"
+                    name="apiKey"
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="samsara_api_…"
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    The token needs Read Vehicles and Read Vehicle Statistics permissions.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="username">SkyBitz username</Label>
+                      <Input id="username" name="username" autoComplete="off" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="password">SkyBitz password</Label>
+                      <Input
+                        id="password"
+                        name="password"
+                        type="password"
+                        autoComplete="new-password"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="serviceUrl">Service URL</Label>
+                    <Input
+                      id="serviceUrl"
+                      name="serviceUrl"
+                      type="url"
+                      defaultValue="https://xml.skybitz.com/"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="apiVersion">API version</Label>
+                    <Input id="apiVersion" name="apiVersion" defaultValue="2.76" required />
+                  </div>
+                </>
+              )}
+
+              <div className="flex items-start gap-2 rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                Saving a new connection replaces the current credentials for this provider.
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setConfiguring(null)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isPending}>
+                  {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save connection
                 </Button>
               </DialogFooter>
             </form>

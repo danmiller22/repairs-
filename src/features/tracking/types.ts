@@ -16,3 +16,15 @@ export type TrackingAsset = {
   trackingAddress: string | null
   trackingLastSeenAt: string | null
 }
+
+export type TrackingConnection = {
+  id: 'samsara' | 'xtralease' | 'premier'
+  name: string
+  scope: string
+  configured: boolean
+  available: boolean
+  source: 'secure-settings' | 'environment' | null
+  lastSyncedAt: string | null
+  assetCount: number
+  error: string | null
+}

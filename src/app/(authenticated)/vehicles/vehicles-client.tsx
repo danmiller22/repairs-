@@ -396,7 +396,7 @@ export function VehiclesClient({
               <Link href={`/vehicles/${v.id}`}>
                 <div className="relative aspect-[16/10] overflow-hidden bg-muted">
                   <Image
-                    src={v.imageUrl || '/car_placeholder.avif'}
+                    src={v.imageUrl || '/truck_placeholder.svg'}
                     alt={`${v.year} ${v.make} ${v.model}`}
                     fill
                     unoptimized

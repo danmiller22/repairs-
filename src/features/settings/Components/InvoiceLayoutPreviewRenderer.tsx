@@ -93,8 +93,8 @@ const DUMMY_INVOICE_DATA = {
     { description: "Oil Change", hours: 0.5, rate: 85.0, total: 42.5 },
   ],
   vehicle: {
-    make: "Toyota",
-    model: "Camry",
+    make: "Freightliner",
+    model: "Cascadia",
     year: 2022,
     vin: "1HGBH41JXMN109186",
     licensePlate: "ABC-1234",
@@ -165,8 +165,8 @@ const DUMMY_QUOTE_DATA = {
     taxId: "GB123456789",
   },
   vehicle: {
-    make: "Toyota",
-    model: "Camry",
+    make: "Freightliner",
+    model: "Cascadia",
     year: 2022,
     vin: "1HGBH41JXMN109186",
     licensePlate: "ABC-1234",

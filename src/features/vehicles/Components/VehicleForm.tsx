@@ -334,7 +334,7 @@ export function VehicleForm({ open, onOpenChange, vehicle, customers }: VehicleF
               <Input
                 id="make"
                 name="make"
-                placeholder={isMarine ? "Boston Whaler" : "Toyota"}
+                placeholder={isMarine ? "Boston Whaler" : "Freightliner"}
                 defaultValue={vehicle?.make}
                 required
               />
@@ -344,7 +344,7 @@ export function VehicleForm({ open, onOpenChange, vehicle, customers }: VehicleF
               <Input
                 id="model"
                 name="model"
-                placeholder={isMarine ? "Montauk 170" : "Camry"}
+                placeholder={isMarine ? "Montauk 170" : "Cascadia"}
                 defaultValue={vehicle?.model}
                 required
               />
@@ -381,7 +381,7 @@ export function VehicleForm({ open, onOpenChange, vehicle, customers }: VehicleF
               <Input
                 id="vin"
                 name="vin"
-                placeholder="1HGCM82633A004352"
+                placeholder="1FUJHHDR8PLAB1234"
                 defaultValue={vehicle?.vin ?? ""}
               />
             </div>
@@ -390,7 +390,7 @@ export function VehicleForm({ open, onOpenChange, vehicle, customers }: VehicleF
               <Input
                 id="licensePlate"
                 name="licensePlate"
-                placeholder="ABC-1234"
+                placeholder="P123456"
                 defaultValue={vehicle?.licensePlate ?? ""}
               />
             </div>
@@ -402,7 +402,7 @@ export function VehicleForm({ open, onOpenChange, vehicle, customers }: VehicleF
               <Input
                 id="color"
                 name="color"
-                placeholder="Silver"
+                placeholder="White"
                 defaultValue={vehicle?.color ?? ""}
               />
             </div>
@@ -410,7 +410,7 @@ export function VehicleForm({ open, onOpenChange, vehicle, customers }: VehicleF
               <Label htmlFor="fuelType">{t("fuelType")}</Label>
               <Select
                 name="fuelType"
-                defaultValue={vehicle?.fuelType ?? "gasoline"}
+                defaultValue={vehicle?.fuelType ?? (isMarine ? "gasoline" : "diesel")}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -464,7 +464,7 @@ export function VehicleForm({ open, onOpenChange, vehicle, customers }: VehicleF
               <Input
                 id="engineSize"
                 name="engineSize"
-                placeholder={isMarine ? "Mercury F 350 XXL Verado V-10 (350 hp)" : "2.5L"}
+                placeholder={isMarine ? "Mercury F 350 XXL Verado V-10 (350 hp)" : "14.8L"}
                 defaultValue={vehicle?.engineSize ?? ""}
               />
             </div>
@@ -473,7 +473,7 @@ export function VehicleForm({ open, onOpenChange, vehicle, customers }: VehicleF
               <Input
                 id="engineCode"
                 name="engineCode"
-                placeholder="2AR-FE"
+                placeholder="Detroit DD15"
                 defaultValue={vehicle?.engineCode ?? ""}
               />
             </div>

@@ -396,6 +396,6 @@ Always include id columns in your queries — for the primary entity AND any rel
 - Inspection: [template name](/inspections/{inspection.id})
 
 When a query involves JOINs, make every related entity clickable. For example, when showing invoices with vehicle and customer info:
-| [Oil Change](/vehicles/abc123/service/def456) | [Toyota Corolla](/vehicles/abc123) | [John Smith](/customers/cust789) | $150 |
+| [PM Service](/vehicles/abc123/service/def456) | [Freightliner Cascadia](/vehicles/abc123) | [John Smith](/customers/cust789) | $850 |
 Always JOIN to vehicles and customers when relevant so you can include their ids and link to them.
 `.trim();

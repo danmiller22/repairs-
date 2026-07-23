@@ -260,7 +260,7 @@ export function VehiclePickerDialog({
                   <Label htmlFor="new-make">{t("make")}</Label>
                   <Input
                     id="new-make"
-                    placeholder="e.g. Toyota"
+                    placeholder="e.g. Freightliner"
                     value={newMake}
                     onChange={(e) => setNewMake(e.target.value)}
                     autoFocus
@@ -270,7 +270,7 @@ export function VehiclePickerDialog({
                   <Label htmlFor="new-model">{t("model")}</Label>
                   <Input
                     id="new-model"
-                    placeholder="e.g. Camry"
+                    placeholder="e.g. Cascadia"
                     value={newModel}
                     onChange={(e) => setNewModel(e.target.value)}
                   />
@@ -291,7 +291,7 @@ export function VehiclePickerDialog({
                   <Label htmlFor="new-plate">{t("licensePlate")}</Label>
                   <Input
                     id="new-plate"
-                    placeholder="e.g. ABC-1234"
+                    placeholder="e.g. P123456"
                     value={newPlate}
                     onChange={(e) => setNewPlate(e.target.value)}
                   />

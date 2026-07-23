@@ -1,10 +1,16 @@
 import { PageHeader } from '@/components/page-header'
-import { getTrackingAssets } from '@/features/tracking/Actions/trackingActions'
+import {
+  getTrackingAssets,
+  getTrackingConnections,
+} from '@/features/tracking/Actions/trackingActions'
 import { TrackingClient } from '@/features/tracking/Components/tracking-client'
-import type { TrackingAsset } from '@/features/tracking/types'
+import type { TrackingAsset, TrackingConnection } from '@/features/tracking/types'
 
 export default async function TrackingPage() {
-  const result = await getTrackingAssets()
+  const [result, connectionResult] = await Promise.all([
+    getTrackingAssets(),
+    getTrackingConnections(),
+  ])
 
   if (!result.success || !result.data) {
     return (
@@ -22,12 +28,14 @@ export default async function TrackingPage() {
     assetType: asset.assetType === 'trailer' ? 'trailer' : 'truck',
     trackingLastSeenAt: asset.trackingLastSeenAt?.toISOString() ?? null,
   }))
+  const connections: TrackingConnection[] =
+    connectionResult.success && connectionResult.data ? connectionResult.data : []
 
   return (
     <>
       <PageHeader />
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <TrackingClient assets={assets} />
+        <TrackingClient assets={assets} connections={connections} />
       </div>
     </>
   )

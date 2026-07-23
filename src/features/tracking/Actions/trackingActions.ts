@@ -5,6 +5,15 @@ import { z } from 'zod'
 import { db } from '@/lib/db'
 import { withAuth } from '@/lib/with-auth'
 import { PermissionAction, PermissionSubject } from '@/lib/permissions'
+import {
+  getTrackingCredentials,
+  getTrackingSyncMetadata,
+  saveTrackingCredentials,
+  saveTrackingSyncMetadata,
+  type TrackingProviderId,
+} from '../Lib/provider-credentials'
+import { syncProviderUnits } from '../Lib/provider-sync'
+import type { TrackingConnection } from '../types'
 
 const manualLocationSchema = z.object({
   vehicleId: z.string().min(1),
@@ -14,6 +23,31 @@ const manualLocationSchema = z.object({
   status: z.enum(['moving', 'stopped', 'idle', 'maintenance', 'offline']),
   address: z.string().trim().max(250).optional(),
 })
+
+const providerSchema = z.enum(['samsara', 'xtralease'])
+
+const saveConnectionSchema = z.discriminatedUnion('provider', [
+  z.object({
+    provider: z.literal('samsara'),
+    apiKey: z.string().trim().min(20, 'Enter a valid Samsara API token'),
+  }),
+  z.object({
+    provider: z.literal('xtralease'),
+    username: z.string().trim().min(3),
+    password: z.string().min(8),
+    serviceUrl: z
+      .string()
+      .url()
+      .startsWith('https://')
+      .refine((value) => new URL(value).hostname === 'xml.skybitz.com', {
+        message: 'XTRA Lease service URL must use xml.skybitz.com',
+      }),
+    apiVersion: z
+      .string()
+      .trim()
+      .regex(/^\d+\.\d+$/),
+  }),
+])
 
 export async function getTrackingAssets() {
   return withAuth(
@@ -78,6 +112,157 @@ export async function updateManualTrackingLocation(input: unknown) {
         entityId: result.id,
         message: 'Updated unit location manually',
         metadata: { vehicleId: result.id },
+      }),
+    }
+  )
+}
+
+export async function getTrackingConnections() {
+  return withAuth(
+    async ({ organizationId }) => {
+      const providerIds: TrackingProviderId[] = ['samsara', 'xtralease']
+      const configured = await Promise.all(
+        providerIds.map(async (provider) => {
+          const [connection, metadata] = await Promise.all([
+            getTrackingCredentials(organizationId, provider),
+            getTrackingSyncMetadata(organizationId, provider),
+          ])
+          return { provider, connection, metadata }
+        })
+      )
+
+      const definitions = {
+        samsara: { name: 'Samsara', scope: 'Trucks' },
+        xtralease: { name: 'XTRA Lease', scope: 'Trailers via SkyBitz' },
+      } as const
+
+      const connections: TrackingConnection[] = configured.map(
+        ({ provider, connection, metadata }) => ({
+          id: provider,
+          ...definitions[provider],
+          configured: !!connection.credentials,
+          available: true,
+          source: connection.source,
+          ...metadata,
+        })
+      )
+
+      connections.push({
+        id: 'premier',
+        name: 'Premier Trailer',
+        scope: 'Trailers',
+        configured: false,
+        available: false,
+        source: null,
+        lastSyncedAt: null,
+        assetCount: 0,
+        error: null,
+      })
+
+      return connections
+    },
+    {
+      requiredPermissions: [{ action: PermissionAction.READ, subject: PermissionSubject.VEHICLES }],
+    }
+  )
+}
+
+export async function saveTrackingProviderConnection(input: unknown) {
+  return withAuth(
+    async ({ organizationId, userId }) => {
+      const data = saveConnectionSchema.parse(input)
+      const credentials =
+        data.provider === 'samsara'
+          ? { apiKey: data.apiKey }
+          : {
+              username: data.username,
+              password: data.password,
+              serviceUrl: data.serviceUrl,
+              apiVersion: data.apiVersion,
+            }
+
+      await saveTrackingCredentials(organizationId, userId, data.provider, credentials)
+      await saveTrackingSyncMetadata(organizationId, userId, data.provider, {
+        lastSyncedAt: null,
+        assetCount: 0,
+        error: null,
+      })
+      revalidatePath('/tracking')
+      return { provider: data.provider }
+    },
+    {
+      requiredPermissions: [
+        { action: PermissionAction.UPDATE, subject: PermissionSubject.VEHICLES },
+      ],
+      audit: ({ result }) => ({
+        action: 'tracking.connection_saved',
+        entity: 'TrackingProvider',
+        entityId: result.provider,
+        message: `Saved ${result.provider} tracking connection`,
+      }),
+    }
+  )
+}
+
+export async function syncTrackingProvider(input: unknown) {
+  return withAuth(
+    async ({ organizationId, userId }) => {
+      const provider = providerSchema.parse(input) as TrackingProviderId
+      const connection = await getTrackingCredentials(organizationId, provider)
+      if (!connection.credentials) throw new Error(`${provider} is not configured`)
+
+      try {
+        if (provider === 'xtralease') {
+          const previous = await getTrackingSyncMetadata(organizationId, provider)
+          if (
+            previous.lastSyncedAt &&
+            Date.now() - new Date(previous.lastSyncedAt).getTime() < 30 * 60 * 1000
+          ) {
+            return {
+              provider,
+              assetCount: previous.assetCount,
+              lastSyncedAt: previous.lastSyncedAt,
+              skipped: true,
+            }
+          }
+        }
+
+        const assetCount = await syncProviderUnits({
+          provider,
+          credentials: connection.credentials,
+          organizationId,
+          userId,
+        })
+        const lastSyncedAt = new Date().toISOString()
+        await saveTrackingSyncMetadata(organizationId, userId, provider, {
+          lastSyncedAt,
+          assetCount,
+          error: null,
+        })
+        revalidatePath('/tracking')
+        revalidatePath('/vehicles')
+        revalidatePath('/')
+        return { provider, assetCount, lastSyncedAt, skipped: false }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Tracking sync failed'
+        await saveTrackingSyncMetadata(organizationId, userId, provider, {
+          lastSyncedAt: null,
+          assetCount: 0,
+          error: message,
+        })
+        throw error
+      }
+    },
+    {
+      requiredPermissions: [
+        { action: PermissionAction.UPDATE, subject: PermissionSubject.VEHICLES },
+      ],
+      audit: ({ result }) => ({
+        action: 'tracking.provider_sync',
+        entity: 'TrackingProvider',
+        entityId: result.provider,
+        message: `Synced ${result.assetCount} units from ${result.provider}`,
+        metadata: { assetCount: result.assetCount },
       }),
     }
   )

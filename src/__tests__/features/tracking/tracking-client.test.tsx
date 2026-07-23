@@ -1,10 +1,16 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { TrackingClient } from '@/features/tracking/Components/tracking-client'
-import type { TrackingAsset } from '@/features/tracking/types'
+import type { TrackingAsset, TrackingConnection } from '@/features/tracking/types'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
+}))
+
+vi.mock('@/features/tracking/Actions/trackingActions', () => ({
+  updateManualTrackingLocation: vi.fn(),
+  saveTrackingProviderConnection: vi.fn(),
+  syncTrackingProvider: vi.fn(),
 }))
 
 vi.mock('@/features/tracking/Components/tracking-map-dynamic', () => ({
@@ -52,19 +58,57 @@ const assets: TrackingAsset[] = [
   },
 ]
 
+const connections: TrackingConnection[] = [
+  {
+    id: 'samsara',
+    name: 'Samsara',
+    scope: 'Trucks',
+    configured: true,
+    available: true,
+    source: 'environment',
+    lastSyncedAt: null,
+    assetCount: 0,
+    error: 'Samsara rejected the API token (401). Replace it and try again.',
+  },
+  {
+    id: 'xtralease',
+    name: 'XTRA Lease',
+    scope: 'Trailers via SkyBitz',
+    configured: true,
+    available: true,
+    source: 'environment',
+    lastSyncedAt: '2026-07-23T20:00:00.000Z',
+    assetCount: 114,
+    error: null,
+  },
+  {
+    id: 'premier',
+    name: 'Premier Trailer',
+    scope: 'Trailers',
+    configured: false,
+    available: false,
+    source: null,
+    lastSyncedAt: null,
+    assetCount: 0,
+    error: null,
+  },
+]
+
 describe('TrackingClient', () => {
   it('shows trucks and trailers together in one tracking view', () => {
-    render(<TrackingClient assets={assets} />)
+    render(<TrackingClient assets={assets} connections={connections} />)
 
     expect(screen.getByText('TRK-101')).toBeInTheDocument()
     expect(screen.getByText('TRL-202')).toBeInTheDocument()
     expect(screen.getByText('Samsara')).toBeInTheDocument()
     expect(screen.getByText('XTRA Lease')).toBeInTheDocument()
+    expect(screen.getByText('Needs attention')).toBeInTheDocument()
+    expect(screen.getByText(/114 units/)).toBeInTheDocument()
     expect(screen.getByTestId('tracking-map')).toHaveTextContent('truck-1,trailer-1')
   })
 
   it('filters the unified list to trailers', () => {
-    render(<TrackingClient assets={assets} />)
+    render(<TrackingClient assets={assets} connections={connections} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'trailers' }))
 

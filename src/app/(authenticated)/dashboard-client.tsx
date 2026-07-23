@@ -16,8 +16,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { statusColors } from "@/lib/table-utils";
 import {
@@ -35,7 +33,6 @@ import {
   BellRing,
   MessageSquare,
   Settings,
-  SlidersHorizontal,
   Undo2,
   X,
 } from "lucide-react";
@@ -45,7 +42,7 @@ import { updateQuoteRequestStatus } from "@/features/inspections/Actions/quoteRe
 import { acknowledgeQuoteResponse } from "@/features/quotes/Actions/quoteResponseActions";
 import { toast } from "sonner";
 import { convertQuoteToServiceRecord, createQuote } from "@/features/quotes/Actions/quoteActions";
-import { useDashboardVisibility, DASHBOARD_CARD_IDS } from "@/hooks/use-dashboard-visibility";
+import { useDashboardVisibility } from "@/hooks/use-dashboard-visibility";
 
 interface ServiceItem {
   id: string;
@@ -245,7 +242,7 @@ export function DashboardClient({
   const [maintenanceTab, setMaintenanceTab] = useState<"active" | "dismissed">("active");
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
-  const { toggleCard, isVisible, visibleCount, totalCount } = useDashboardVisibility(smsEnabled ? "notifications" : "sms");
+  const { isVisible } = useDashboardVisibility(smsEnabled ? "notifications" : "sms");
 
   const formatRelativeTime = (date: string | Date) => {
     const now = new Date();
@@ -295,33 +292,6 @@ export function DashboardClient({
           </div>
           <p className="text-lg font-bold">{stats.pendingJobs}</p>
         </Link>
-      </div>
-
-      {/* Customize Dashboard */}
-      <div className="flex justify-end">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              {t("customize")} ({visibleCount}/{totalCount})
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-56 p-3">
-            <p className="text-sm font-medium mb-2">{t("showCards")}</p>
-            <div className="space-y-2">
-              {DASHBOARD_CARD_IDS.filter((id) => smsEnabled ? id !== "notifications" : id !== "sms").map((id) => (
-                <label key={id} className="flex items-center justify-between gap-2 cursor-pointer">
-                  <span className="text-sm">{t(`cards.${id}`)}</span>
-                  <Switch
-                    size="sm"
-                    checked={isVisible(id)}
-                    onCheckedChange={() => toggleCard(id)}
-                  />
-                </label>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
       </div>
 
       {/* Card grid */}

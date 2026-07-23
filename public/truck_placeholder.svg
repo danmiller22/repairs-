@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-label="Truck placeholder">
+  <rect width="640" height="360" fill="#151010"/>
+  <path d="M72 215h268V95H168c-35 0-62 17-75 51L72 215Z" fill="#ff3038"/>
+  <path d="M340 135h109l80 80h39v62H340V135Z" fill="#d9252d"/>
+  <path d="M386 157h52l51 51H386v-51Z" fill="#26191a"/>
+  <path d="M58 215h510v62H58z" fill="#b51e25"/>
+  <circle cx="172" cy="279" r="47" fill="#090909"/>
+  <circle cx="172" cy="279" r="20" fill="#706366"/>
+  <circle cx="470" cy="279" r="47" fill="#090909"/>
+  <circle cx="470" cy="279" r="20" fill="#706366"/>
+  <path d="M88 177h73V119h-10c-28 0-46 13-57 40l-6 18Z" fill="#26191a"/>
+</svg>

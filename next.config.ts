@@ -4,7 +4,9 @@ import createNextIntlPlugin from 'next-intl/plugin'
 const withNextIntl = createNextIntlPlugin()
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
+  // Docker uses Next's standalone server. Netlify's OpenNext adapter needs the
+  // regular build output and sets NETLIFY=true automatically during builds.
+  output: process.env.NETLIFY ? undefined : 'standalone',
   images: {
     remotePatterns: [],
   },

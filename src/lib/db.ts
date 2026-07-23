@@ -6,8 +6,11 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient() {
+  const connectionString =
+    process.env.DATABASE_URL ?? process.env.NETLIFY_DB_URL;
+
   const adapter = new PrismaPg({
-    connectionString: process.env.DATABASE_URL,
+    connectionString,
     max: 10,
     connectionTimeoutMillis: 5000,
     idleTimeoutMillis: 30000,

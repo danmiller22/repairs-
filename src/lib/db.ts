@@ -1,4 +1,5 @@
 import { PrismaClient } from "@/generated/prisma/client";
+import { getConnectionString } from "@netlify/database";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 const globalForPrisma = globalThis as unknown as {
@@ -6,8 +7,13 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient() {
-  const connectionString =
-    process.env.DATABASE_URL ?? process.env.NETLIFY_DB_URL;
+  let connectionString: string | undefined;
+  try {
+    connectionString = getConnectionString();
+  } catch {
+    connectionString =
+      process.env.NETLIFY_DB_URL ?? process.env.DATABASE_URL;
+  }
 
   const adapter = new PrismaPg({
     connectionString,

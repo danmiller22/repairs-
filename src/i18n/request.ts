@@ -7,7 +7,11 @@ import { resolvePortalOrg } from '@/lib/portal-slug'
 export default getRequestConfig(async () => {
   const headerStore = await headers()
   const acceptLanguage = headerStore.get('accept-language')
-  const pathname = headerStore.get('x-pathname')
+  const pathname =
+    headerStore.get('x-pathname') ??
+    headerStore.get('x-matched-path') ??
+    headerStore.get('x-invoke-path') ??
+    headerStore.get('next-url')
 
   let locale: Locale
 

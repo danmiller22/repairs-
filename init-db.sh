@@ -17,6 +17,19 @@ until pg_isready -d "$DATABASE_URL" -q; do
 done
 echo "PostgreSQL is ready!"
 
+# Restore the prepared US Team Fleet database only when the cloud database is
+# completely new. The dump contains the organisation, users, password hashes,
+# settings, and migration history required for the first production launch.
+SEED_DUMP="/app/prisma/seed/us-team-fleet-cloud.dump"
+if [ -f "$SEED_DUMP" ]; then
+  PUBLIC_TABLE_COUNT="$(psql "$DATABASE_URL" -Atqc "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';")"
+  if [ "$PUBLIC_TABLE_COUNT" = "0" ]; then
+    echo "Restoring US Team Fleet seed database..."
+    pg_restore --no-owner --no-acl --dbname="$DATABASE_URL" "$SEED_DUMP"
+    echo "Seed database restored successfully!"
+  fi
+fi
+
 echo "Applying database migrations..."
 if ! npx prisma migrate deploy 2>/dev/null; then
   # P3005: existing DB without migration history (from db push).

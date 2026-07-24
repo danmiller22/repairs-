@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     region: ohio
-    buildCommand: npm ci && npx prisma generate && npx prisma migrate deploy && npm run build && cp -r public .next/standalone/public && mkdir -p .next/standalone/.next && cp -r .next/static .next/standalone/.next/static
+    buildCommand: npm ci --include=dev && npx prisma generate && npx prisma migrate deploy && npm run build && cp -r public .next/standalone/public && mkdir -p .next/standalone/.next && cp -r .next/static .next/standalone/.next/static
     startCommand: node .next/standalone/server.js
     healthCheckPath: /api/v1/health
     envVars:

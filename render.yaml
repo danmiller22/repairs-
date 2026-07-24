@@ -20,6 +20,8 @@ services:
         value: self-hosted
       - key: NODE_ENV
         value: production
+      - key: HOSTNAME
+        value: 0.0.0.0
       - key: NODE_VERSION
         value: 22.23.1
       - key: NEXT_TELEMETRY_DISABLED

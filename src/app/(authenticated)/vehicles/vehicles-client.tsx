@@ -17,6 +17,7 @@ import {
   Search,
   Trash2,
   Truck,
+  Upload,
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
@@ -42,7 +43,7 @@ import { DataTablePagination } from '@/components/data-table-pagination'
 import { useGlassModal } from '@/components/glass-modal'
 import { useConfirm } from '@/components/confirm-dialog'
 import { VehicleForm } from '@/features/vehicles/Components/VehicleForm'
-import { deleteVehicle } from '@/features/vehicles/Actions/vehicleActions'
+import { deleteVehicle, importVehiclesCsv } from '@/features/vehicles/Actions/vehicleActions'
 
 interface Vehicle {
   id: string
@@ -99,6 +100,8 @@ export function VehiclesClient({
   const t = useTranslations('vehicles.list')
   const tc = useTranslations('common.buttons')
   const [showForm, setShowForm] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const importInputRef = useRef<HTMLInputElement | null>(null)
   const [editVehicle, setEditVehicle] = useState<Vehicle | null>(null)
   const [view, setView] = useState<'table' | 'grid' | 'grid6'>(initialView)
   const modal = useGlassModal()
@@ -161,6 +164,33 @@ export function VehiclesClient({
     else modal.open('error', 'Error', result.error || t('deleteError'))
   }
 
+  const handleCsvImport = async (file: File) => {
+    setIsImporting(true)
+    try {
+      const result = await importVehiclesCsv({ fileName: file.name, csv: await file.text() })
+      if (result.success && result.data) {
+        const summary = result.data
+        modal.open(
+          'success',
+          'Fleet imported',
+          `Processed ${summary.total} units: ${summary.created} added, ${summary.updated} updated, ${summary.skipped} skipped.`
+        )
+        router.refresh()
+      } else {
+        modal.open('error', 'Import failed', result.error || 'Could not import CSV')
+      }
+    } catch (error) {
+      modal.open(
+        'error',
+        'Import failed',
+        error instanceof Error ? error.message : 'Could not import CSV'
+      )
+    } finally {
+      setIsImporting(false)
+      if (importInputRef.current) importInputRef.current.value = ''
+    }
+  }
+
   const unitNumber = (vehicle: Vehicle) =>
     vehicle.trackingExternalId || vehicle.licensePlate || 'Not assigned'
 
@@ -200,6 +230,16 @@ export function VehiclesClient({
           {isPending && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
         </div>
         <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              if (file) void handleCsvImport(file)
+            }}
+          />
           <div className="hidden items-center rounded-md border sm:flex">
             <Button
               variant={view === 'table' ? 'secondary' : 'ghost'}
@@ -229,6 +269,20 @@ export function VehiclesClient({
               <Grid3X3 className="h-4 w-4" />
             </Button>
           </div>
+          <Button
+            variant="outline"
+            className="w-full sm:w-auto"
+            size="sm"
+            disabled={isImporting}
+            onClick={() => importInputRef.current?.click()}
+          >
+            {isImporting ? (
+              <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Upload className="mr-1 h-3.5 w-3.5" />
+            )}
+            Import CSV
+          </Button>
           <Button className="w-full sm:w-auto" size="sm" onClick={() => setShowForm(true)}>
             <Plus className="mr-1 h-3.5 w-3.5" />
             Add Unit

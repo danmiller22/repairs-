@@ -7,6 +7,7 @@ import { createVehicleSchema, updateVehicleSchema } from '../Schema/vehicleSchem
 import { revalidatePath } from 'next/cache'
 import { unlink } from 'fs/promises'
 import { resolveUploadPath } from '@/lib/resolve-upload-path'
+import { normalizeVehicleCsv } from '../Lib/vehicleCsvImport'
 
 export async function getVehicles() {
   return withAuth(
@@ -180,6 +181,131 @@ export async function createVehicle(input: unknown) {
         message: `Created vehicle ${result.year} ${result.make} ${result.model}`,
         metadata: { vehicleId: result.id },
       }),
+    }
+  )
+}
+
+export async function importVehiclesCsv(input: { fileName: string; csv: string }) {
+  return withAuth(
+    async ({ userId, organizationId }) => {
+      if (!input.fileName.toLowerCase().endsWith('.csv'))
+        throw new Error('Please select a CSV file')
+      if (input.csv.length > 2_000_000) throw new Error('CSV file is too large')
+
+      const normalized = normalizeVehicleCsv(input.csv)
+      const existing = await db.vehicle.findMany({
+        where: { organizationId },
+        select: {
+          id: true,
+          trackingExternalId: true,
+          vin: true,
+          licensePlate: true,
+          make: true,
+          model: true,
+          year: true,
+          mileage: true,
+        },
+      })
+
+      const byExternalId = new Map(
+        existing
+          .filter((vehicle) => vehicle.trackingExternalId)
+          .map((vehicle) => [vehicle.trackingExternalId!.toUpperCase(), vehicle])
+      )
+      const byVin = new Map(
+        existing
+          .filter((vehicle) => vehicle.vin)
+          .map((vehicle) => [vehicle.vin!.toUpperCase(), vehicle])
+      )
+      const byPlate = new Map(
+        existing
+          .filter((vehicle) => vehicle.licensePlate)
+          .map((vehicle) => [vehicle.licensePlate!.toUpperCase(), vehicle])
+      )
+
+      let created = 0
+      let updated = 0
+
+      await db.$transaction(
+        async (tx) => {
+          for (const vehicle of normalized.vehicles) {
+            const match =
+              byExternalId.get(vehicle.externalId.toUpperCase()) ??
+              (vehicle.vin ? byVin.get(vehicle.vin.toUpperCase()) : undefined) ??
+              (vehicle.licensePlate ? byPlate.get(vehicle.licensePlate.toUpperCase()) : undefined)
+
+            if (match) {
+              await tx.vehicle.update({
+                where: { id: match.id },
+                data: {
+                  assetType: vehicle.assetType,
+                  vin: match.vin || vehicle.vin,
+                  licensePlate: match.licensePlate || vehicle.licensePlate,
+                  mileage:
+                    vehicle.mileage > 0 ? Math.max(match.mileage, vehicle.mileage) : match.mileage,
+                  trackingProvider: vehicle.source === 'map-assets' ? 'skybitz' : 'samsara',
+                  trackingExternalId: match.trackingExternalId || vehicle.externalId,
+                  trackingAddress: vehicle.trackingAddress,
+                  trackingStatus: vehicle.trackingStatus,
+                  trackingLastSeenAt: vehicle.trackingLastSeenAt,
+                  trackingCargoStatus: vehicle.trackingCargoStatus,
+                  trackingSpeed: vehicle.trackingSpeed,
+                  trackingHeading: vehicle.trackingHeading,
+                },
+              })
+              updated += 1
+              continue
+            }
+
+            const createdVehicle = await tx.vehicle.create({
+              data: {
+                assetType: vehicle.assetType,
+                make: vehicle.make,
+                model: vehicle.model,
+                year: vehicle.year,
+                vin: vehicle.vin,
+                licensePlate: vehicle.licensePlate,
+                mileage: vehicle.mileage,
+                fuelType: vehicle.assetType === 'truck' ? 'diesel' : 'other',
+                transmission: vehicle.assetType === 'truck' ? 'automatic' : null,
+                userId,
+                organizationId,
+                trackingProvider: vehicle.source === 'map-assets' ? 'skybitz' : 'samsara',
+                trackingExternalId: vehicle.externalId,
+                trackingAddress: vehicle.trackingAddress,
+                trackingStatus: vehicle.trackingStatus,
+                trackingLastSeenAt: vehicle.trackingLastSeenAt,
+                trackingCargoStatus: vehicle.trackingCargoStatus,
+                trackingSpeed: vehicle.trackingSpeed,
+                trackingHeading: vehicle.trackingHeading,
+              },
+            })
+            byExternalId.set(vehicle.externalId.toUpperCase(), createdVehicle)
+            if (vehicle.vin) byVin.set(vehicle.vin.toUpperCase(), createdVehicle)
+            if (vehicle.licensePlate)
+              byPlate.set(vehicle.licensePlate.toUpperCase(), createdVehicle)
+            created += 1
+          }
+        },
+        { maxWait: 10_000, timeout: 120_000 }
+      )
+
+      revalidatePath('/')
+      revalidatePath('/vehicles')
+      revalidatePath('/tracking')
+      return {
+        source: normalized.kind,
+        total: normalized.vehicles.length,
+        created,
+        updated,
+        skipped: normalized.skipped,
+      }
+    },
+    {
+      requiredPermissions: [
+        { action: PermissionAction.CREATE, subject: PermissionSubject.VEHICLES },
+        { action: PermissionAction.UPDATE, subject: PermissionSubject.VEHICLES },
+      ],
     }
   )
 }

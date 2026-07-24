@@ -155,6 +155,7 @@ interface PaginatedFindings {
 
 interface VehicleDetail {
   id: string
+  assetType: string
   make: string
   model: string
   year: number
@@ -609,14 +610,16 @@ export function VehicleDetailClient({
 
         {/* Quick stats */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Gauge className="h-3.5 w-3.5" />
-            <span className="font-semibold text-foreground">
-              {vehicle.mileage.toLocaleString()}
-            </span>
-            <span className="text-xs">{distUnit}</span>
-          </div>
-          {predictionData && (
+          {vehicle.assetType !== 'trailer' && (
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <Gauge className="h-3.5 w-3.5" />
+              <span className="font-semibold text-foreground">
+                {vehicle.mileage.toLocaleString()}
+              </span>
+              <span className="text-xs">{distUnit}</span>
+            </div>
+          )}
+          {vehicle.assetType !== 'trailer' && predictionData && (
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <TooltipProvider>
                 <Tooltip>

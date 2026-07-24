@@ -25,9 +25,11 @@ interface DetailsRightColumnProps {
   taxEnabled: boolean
   initialVehicle: {
     id: string
+    assetType: string
     make: string
     model: string
     year: number
+    vin: string | null
     licensePlate: string | null
   }
   boardTechnicians: BoardTechnicianOption[]
@@ -93,15 +95,6 @@ export function DetailsRightColumn({
         customer={record.vehicle.customer}
         initialVehicle={initialVehicle}
       />
-      <ScheduleTimesSection
-        serviceRecordId={record.id}
-        technicians={boardTechnicians}
-        orgMembers={orgMembers}
-        initialStartDateTime={formState.initialData.startDateTime}
-        initialEndDateTime={formState.initialData.endDateTime}
-        initialTechnicianId={record.technicianId}
-        onSaved={formState.flashSaved}
-      />
       <TotalsSection
         partsSubtotal={formState.partsSubtotal}
         laborSubtotal={formState.laborSubtotal}
@@ -119,31 +112,48 @@ export function DetailsRightColumn({
         totalAmount={formState.totalAmount}
         currencyCode={currencyCode}
       />
-      <WarrantySection
-        warrantyMonths={formState.warrantyMonths}
-        warrantyMileage={formState.warrantyMileage}
-        warrantyNotes={formState.warrantyNotes}
-        serviceDate={formState.initialData.serviceDate}
-        onWarrantyMonthsChange={formState.dirtySetWarrantyMonths}
-        onWarrantyMileageChange={formState.dirtySetWarrantyMileage}
-        onWarrantyNotesChange={formState.dirtySetWarrantyNotes}
-      />
-      <ServiceAttachments
-        attachments={record.attachments || []}
-        imageAttachments={formState.imageAttachments}
-        onImageClick={actions.onImageClick}
-        onDeleteAttachment={actions.handleDeleteAttachment}
-        deletingAttachment={actions.deletingAttachment}
-      />
-      <CustomFieldsForm
-        entityId={record.id}
-        entityType="service_record"
-        onValuesReady={formState.onCustomFieldsReady}
-        onChange={formState.markDirty}
-      />
-      {notificationHistory.length > 0 && (
-        <NotificationHistory notifications={notificationHistory} />
-      )}
+      <details className="group rounded-lg border">
+        <summary className="cursor-pointer list-none px-3 py-2 text-sm font-medium">
+          More service details
+          <span className="float-right text-muted-foreground group-open:rotate-180">⌄</span>
+        </summary>
+        <div className="space-y-3 border-t p-3">
+          <ScheduleTimesSection
+            serviceRecordId={record.id}
+            technicians={boardTechnicians}
+            orgMembers={orgMembers}
+            initialStartDateTime={formState.initialData.startDateTime}
+            initialEndDateTime={formState.initialData.endDateTime}
+            initialTechnicianId={record.technicianId}
+            onSaved={formState.flashSaved}
+          />
+          <WarrantySection
+            warrantyMonths={formState.warrantyMonths}
+            warrantyMileage={formState.warrantyMileage}
+            warrantyNotes={formState.warrantyNotes}
+            serviceDate={formState.initialData.serviceDate}
+            onWarrantyMonthsChange={formState.dirtySetWarrantyMonths}
+            onWarrantyMileageChange={formState.dirtySetWarrantyMileage}
+            onWarrantyNotesChange={formState.dirtySetWarrantyNotes}
+          />
+          <ServiceAttachments
+            attachments={record.attachments || []}
+            imageAttachments={formState.imageAttachments}
+            onImageClick={actions.onImageClick}
+            onDeleteAttachment={actions.handleDeleteAttachment}
+            deletingAttachment={actions.deletingAttachment}
+          />
+          <CustomFieldsForm
+            entityId={record.id}
+            entityType="service_record"
+            onValuesReady={formState.onCustomFieldsReady}
+            onChange={formState.markDirty}
+          />
+          {notificationHistory.length > 0 && (
+            <NotificationHistory notifications={notificationHistory} />
+          )}
+        </div>
+      </details>
     </div>
   )
 }

@@ -87,9 +87,11 @@ export default async function ServiceDetailPage({
   const laborPresets = presetsResult.success && presetsResult.data ? presetsResult.data : []
   const initialVehicle = {
     id: record.vehicle.id,
+    assetType: record.vehicle.assetType,
     make: record.vehicle.make,
     model: record.vehicle.model,
     year: record.vehicle.year,
+    vin: record.vehicle.vin,
     licensePlate: record.vehicle.licensePlate,
   }
   const boardTechnicians = (

@@ -305,6 +305,9 @@ export function VehiclesClient({
                     <p className="truncate text-sm text-muted-foreground">
                       {vehicle.year} {vehicle.make} {vehicle.model}
                     </p>
+                    <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
+                      VIN: {vehicle.vin || 'Not provided'}
+                    </p>
                   </Link>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -349,10 +352,12 @@ export function VehiclesClient({
                     )}
                     {vehicle.assetType === 'trailer' ? 'Trailer' : 'Truck'}
                   </Badge>
-                  <span className="flex items-center gap-1.5 font-mono text-sm text-muted-foreground">
-                    <Gauge className="h-3.5 w-3.5" />
-                    {new Intl.NumberFormat('en-US').format(vehicle.mileage)} mi
-                  </span>
+                  {vehicle.assetType !== 'trailer' && (
+                    <span className="flex items-center gap-1.5 font-mono text-sm text-muted-foreground">
+                      <Gauge className="h-3.5 w-3.5" />
+                      {new Intl.NumberFormat('en-US').format(vehicle.mileage)} mi
+                    </span>
+                  )}
                 </Link>
               </div>
             ))}
@@ -364,8 +369,11 @@ export function VehiclesClient({
                 <TableRow>
                   <TableHead className="w-[160px]">Unit Number</TableHead>
                   <TableHead>Equipment</TableHead>
+                  <TableHead>VIN</TableHead>
                   <TableHead className="w-[120px]">Category</TableHead>
-                  <TableHead className="w-[120px] text-right">Mileage</TableHead>
+                  {assetType !== 'trailer' && (
+                    <TableHead className="w-[120px] text-right">Odometer</TableHead>
+                  )}
                   <TableHead className="w-[50px]" />
                 </TableRow>
               </TableHeader>
@@ -380,6 +388,9 @@ export function VehiclesClient({
                     <TableCell className="font-medium">
                       {vehicle.year} {vehicle.make} {vehicle.model}
                     </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {vehicle.vin || 'Not provided'}
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="gap-1.5 capitalize">
                         {vehicle.assetType === 'trailer' ? (
@@ -390,9 +401,13 @@ export function VehiclesClient({
                         {vehicle.assetType === 'trailer' ? 'Trailer' : 'Truck'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right font-mono text-sm">
-                      {new Intl.NumberFormat('en-US').format(vehicle.mileage)}
-                    </TableCell>
+                    {assetType !== 'trailer' && (
+                      <TableCell className="text-right font-mono text-sm">
+                        {vehicle.assetType === 'trailer'
+                          ? '—'
+                          : new Intl.NumberFormat('en-US').format(vehicle.mileage)}
+                      </TableCell>
+                    )}
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={(event) => event.stopPropagation()}>
@@ -476,14 +491,19 @@ export function VehiclesClient({
                     <p className="text-sm text-white/80">
                       {vehicle.year} {vehicle.make} {vehicle.model}
                     </p>
+                    <p className="mt-1 truncate font-mono text-xs text-white/65">
+                      VIN: {vehicle.vin || 'Not provided'}
+                    </p>
                   </div>
                 </div>
-                <CardContent className="flex items-center justify-between px-4 py-2 text-sm">
-                  <div className="flex items-center gap-1.5">
-                    <Gauge className="h-3.5 w-3.5" />
-                    {new Intl.NumberFormat('en-US').format(vehicle.mileage)} mi
-                  </div>
-                </CardContent>
+                {vehicle.assetType !== 'trailer' && (
+                  <CardContent className="flex items-center justify-between px-4 py-2 text-sm">
+                    <div className="flex items-center gap-1.5">
+                      <Gauge className="h-3.5 w-3.5" />
+                      {new Intl.NumberFormat('en-US').format(vehicle.mileage)} mi
+                    </div>
+                  </CardContent>
+                )}
               </Link>
             </Card>
           ))}

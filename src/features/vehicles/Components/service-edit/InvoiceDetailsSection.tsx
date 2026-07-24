@@ -79,7 +79,11 @@ export function InvoiceDetailsSection({
           type="button"
           variant="outline"
           size="sm"
-          className={cn('h-7 text-xs', paymentStatus === 'paid' && 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800')}
+          className={cn(
+            'h-7 text-xs',
+            paymentStatus === 'paid' &&
+              'border-green-300 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800'
+          )}
           onClick={onTogglePaid}
           disabled={paymentLoading}
         >
@@ -93,7 +97,9 @@ export function InvoiceDetailsSection({
       </div>
 
       <div className="space-y-1">
-        <Label htmlFor="title" className="text-xs">{t('titleLabel')}</Label>
+        <Label htmlFor="title" className="text-xs">
+          {t('titleLabel')}
+        </Label>
         <Input
           id="title"
           name="title"
@@ -142,54 +148,87 @@ export function InvoiceDetailsSection({
         </div>
       </div>
 
-      <div className="space-y-1">
-        <Label htmlFor="invoiceNumber" className="text-xs">{t('invoiceNumber')}</Label>
-        <Input
-          id="invoiceNumber"
-          name="invoiceNumber"
-          placeholder="2026-1001"
-          defaultValue={initialData.invoiceNumber || ''}
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1">
-          <Label className="text-xs">{t('invoiceDate')}</Label>
-          <input type="hidden" name="invoiceDate" value={toISODate(invoiceDate)} />
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn('w-full justify-start text-left font-normal h-9 text-sm', !invoiceDate && 'text-muted-foreground')}
-              >
-                <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                <span suppressHydrationWarning>{invoiceDate ? formatDate(invoiceDate) : t('invoiceDate')}</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar mode="single" selected={invoiceDate} onSelect={(d) => { setInvoiceDate(d); onDirty?.() }} />
-            </PopoverContent>
-          </Popover>
+      <details className="group rounded-md border">
+        <summary className="cursor-pointer list-none px-3 py-2 text-xs font-medium">
+          More invoice details
+          <span className="float-right text-muted-foreground group-open:rotate-180">⌄</span>
+        </summary>
+        <div className="space-y-3 border-t p-3">
+          <div className="space-y-1">
+            <Label htmlFor="invoiceNumber" className="text-xs">
+              {t('invoiceNumber')}
+            </Label>
+            <Input
+              id="invoiceNumber"
+              name="invoiceNumber"
+              placeholder="2026-1001"
+              defaultValue={initialData.invoiceNumber || ''}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">{t('invoiceDate')}</Label>
+              <input type="hidden" name="invoiceDate" value={toISODate(invoiceDate)} />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      'w-full justify-start text-left font-normal h-9 text-sm',
+                      !invoiceDate && 'text-muted-foreground'
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    <span suppressHydrationWarning>
+                      {invoiceDate ? formatDate(invoiceDate) : t('invoiceDate')}
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={invoiceDate}
+                    onSelect={(d) => {
+                      setInvoiceDate(d)
+                      onDirty?.()
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">{t('invoiceDueDate')}</Label>
+              <input type="hidden" name="invoiceDueDate" value={toISODate(invoiceDueDate)} />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      'w-full justify-start text-left font-normal h-9 text-sm',
+                      !invoiceDueDate && 'text-muted-foreground'
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    <span suppressHydrationWarning>
+                      {invoiceDueDate ? formatDate(invoiceDueDate) : t('invoiceDueDate')}
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={invoiceDueDate}
+                    onSelect={(d) => {
+                      setInvoiceDueDate(d)
+                      onDirty?.()
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
         </div>
-        <div className="space-y-1">
-          <Label className="text-xs">{t('invoiceDueDate')}</Label>
-          <input type="hidden" name="invoiceDueDate" value={toISODate(invoiceDueDate)} />
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn('w-full justify-start text-left font-normal h-9 text-sm', !invoiceDueDate && 'text-muted-foreground')}
-              >
-                <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                <span suppressHydrationWarning>{invoiceDueDate ? formatDate(invoiceDueDate) : t('invoiceDueDate')}</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar mode="single" selected={invoiceDueDate} onSelect={(d) => { setInvoiceDueDate(d); onDirty?.() }} />
-            </PopoverContent>
-          </Popover>
-        </div>
-      </div>
+      </details>
     </div>
   )
 }

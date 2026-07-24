@@ -1,805 +1,947 @@
-"use server";
+'use server'
 
-import { db } from "@/lib/db";
-import { withAuth } from "@/lib/with-auth";
-import { createServiceSchema, updateServiceSchema } from "../Schema/serviceSchema";
-import { revalidatePath } from "next/cache";
-import { unlink } from "fs/promises";
-import { randomUUID } from "crypto";
-import { resolveUploadPath } from "@/lib/resolve-upload-path";
-import { resolveInvoicePrefix } from "@/lib/invoice-utils";
-import { notificationBus } from "@/lib/notification-bus";
-import { PermissionAction, PermissionSubject } from "@/lib/permissions";
+import { db } from '@/lib/db'
+import { withAuth } from '@/lib/with-auth'
+import { createServiceSchema, updateServiceSchema } from '../Schema/serviceSchema'
+import { revalidatePath } from 'next/cache'
+import { unlink } from 'fs/promises'
+import { randomUUID } from 'crypto'
+import { resolveUploadPath } from '@/lib/resolve-upload-path'
+import { resolveInvoicePrefix } from '@/lib/invoice-utils'
+import { notificationBus } from '@/lib/notification-bus'
+import { PermissionAction, PermissionSubject } from '@/lib/permissions'
 
 export async function getServiceRecords(vehicleId: string) {
-  return withAuth(async ({ organizationId }) => {
-    const vehicle = await db.vehicle.findFirst({
-      where: { id: vehicleId, organizationId },
-    });
-    if (!vehicle) throw new Error("Vehicle not found");
+  return withAuth(
+    async ({ organizationId }) => {
+      const vehicle = await db.vehicle.findFirst({
+        where: { id: vehicleId, organizationId },
+      })
+      if (!vehicle) throw new Error('Vehicle not found')
 
-    return db.serviceRecord.findMany({
-      where: { vehicleId },
-      include: {
-        _count: { select: { partItems: true, laborItems: true } },
-      },
-      orderBy: [{ startDateTime: { sort: "desc", nulls: "last" } }, { serviceDate: "desc" }],
-    });
-  }, { requiredPermissions: [{ action: PermissionAction.READ, subject: PermissionSubject.SERVICES }] });
+      return db.serviceRecord.findMany({
+        where: { vehicleId },
+        include: {
+          _count: { select: { partItems: true, laborItems: true } },
+        },
+        orderBy: [{ startDateTime: { sort: 'desc', nulls: 'last' } }, { serviceDate: 'desc' }],
+      })
+    },
+    {
+      requiredPermissions: [{ action: PermissionAction.READ, subject: PermissionSubject.SERVICES }],
+    }
+  )
 }
 
 export async function getServiceRecordsPaginated(
   vehicleId: string,
   params: {
-    page?: number;
-    pageSize?: number;
-    search?: string;
-    type?: string;
+    page?: number
+    pageSize?: number
+    search?: string
+    type?: string
   }
 ) {
-  return withAuth(async ({ organizationId }) => {
-    const vehicle = await db.vehicle.findFirst({
-      where: { id: vehicleId, organizationId },
-    });
-    if (!vehicle) throw new Error("Vehicle not found");
+  return withAuth(
+    async ({ organizationId }) => {
+      const vehicle = await db.vehicle.findFirst({
+        where: { id: vehicleId, organizationId },
+      })
+      if (!vehicle) throw new Error('Vehicle not found')
 
-    const page = params.page || 1;
-    const pageSize = params.pageSize || 10;
-    const skip = (page - 1) * pageSize;
+      const page = params.page || 1
+      const pageSize = params.pageSize || 10
+      const skip = (page - 1) * pageSize
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: any = { vehicleId };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const where: any = { vehicleId }
 
-    if (params.search) {
-      where.OR = [
-        { title: { contains: params.search, mode: "insensitive" } },
-        { description: { contains: params.search, mode: "insensitive" } },
-        { diagnosticNotes: { contains: params.search, mode: "insensitive" } },
-        { techName: { contains: params.search, mode: "insensitive" } },
-        { shopName: { contains: params.search, mode: "insensitive" } },
-      ];
+      if (params.search) {
+        where.OR = [
+          { title: { contains: params.search, mode: 'insensitive' } },
+          { description: { contains: params.search, mode: 'insensitive' } },
+          { diagnosticNotes: { contains: params.search, mode: 'insensitive' } },
+          { techName: { contains: params.search, mode: 'insensitive' } },
+          { shopName: { contains: params.search, mode: 'insensitive' } },
+        ]
+      }
+
+      if (params.type && params.type !== 'all') {
+        where.type = params.type
+      }
+
+      const [records, total] = await Promise.all([
+        db.serviceRecord.findMany({
+          where,
+          include: {
+            _count: { select: { partItems: true, laborItems: true, attachments: true } },
+            laborItems: { take: 1, select: { description: true } },
+          },
+          orderBy: [{ startDateTime: { sort: 'desc', nulls: 'last' } }, { serviceDate: 'desc' }],
+          skip,
+          take: pageSize,
+        }),
+        db.serviceRecord.count({ where }),
+      ])
+
+      return {
+        records,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.ceil(total / pageSize),
+      }
+    },
+    {
+      requiredPermissions: [{ action: PermissionAction.READ, subject: PermissionSubject.SERVICES }],
     }
-
-    if (params.type && params.type !== "all") {
-      where.type = params.type;
-    }
-
-    const [records, total] = await Promise.all([
-      db.serviceRecord.findMany({
-        where,
-        include: {
-          _count: { select: { partItems: true, laborItems: true, attachments: true } },
-          laborItems: { take: 1, select: { description: true } },
-        },
-        orderBy: [{ startDateTime: { sort: "desc", nulls: "last" } }, { serviceDate: "desc" }],
-        skip,
-        take: pageSize,
-      }),
-      db.serviceRecord.count({ where }),
-    ]);
-
-    return {
-      records,
-      total,
-      page,
-      pageSize,
-      totalPages: Math.ceil(total / pageSize),
-    };
-  }, { requiredPermissions: [{ action: PermissionAction.READ, subject: PermissionSubject.SERVICES }] });
+  )
 }
 
 export async function getAllServiceRecords() {
-  return withAuth(async ({ organizationId }) => {
-    return db.serviceRecord.findMany({
-      where: { vehicle: { organizationId } },
-      include: {
-        vehicle: { select: { make: true, model: true, year: true } },
-        _count: { select: { partItems: true, laborItems: true } },
-      },
-      orderBy: [{ startDateTime: { sort: "desc", nulls: "last" } }, { serviceDate: "desc" }],
-      take: 50,
-    });
-  }, { requiredPermissions: [{ action: PermissionAction.READ, subject: PermissionSubject.SERVICES }] });
+  return withAuth(
+    async ({ organizationId }) => {
+      return db.serviceRecord.findMany({
+        where: { vehicle: { organizationId } },
+        include: {
+          vehicle: { select: { make: true, model: true, year: true } },
+          _count: { select: { partItems: true, laborItems: true } },
+        },
+        orderBy: [{ startDateTime: { sort: 'desc', nulls: 'last' } }, { serviceDate: 'desc' }],
+        take: 50,
+      })
+    },
+    {
+      requiredPermissions: [{ action: PermissionAction.READ, subject: PermissionSubject.SERVICES }],
+    }
+  )
 }
 
 export async function getAllServiceRecordsPaginated(params: {
-  page?: number;
-  pageSize?: number;
-  search?: string;
-  type?: string;
-  status?: string;
+  page?: number
+  pageSize?: number
+  search?: string
+  type?: string
+  status?: string
 }) {
-  return withAuth(async ({ organizationId }) => {
-    const page = params.page || 1;
-    const pageSize = params.pageSize || 20;
-    const skip = (page - 1) * pageSize;
+  return withAuth(
+    async ({ organizationId }) => {
+      const page = params.page || 1
+      const pageSize = params.pageSize || 20
+      const skip = (page - 1) * pageSize
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: any = { vehicle: { organizationId } };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const where: any = { vehicle: { organizationId } }
 
-    if (params.search) {
-      where.OR = [
-        { title: { contains: params.search, mode: "insensitive" } },
-        { invoiceNumber: { contains: params.search, mode: "insensitive" } },
-        { techName: { contains: params.search, mode: "insensitive" } },
-        { vehicle: { make: { contains: params.search, mode: "insensitive" } } },
-        { vehicle: { model: { contains: params.search, mode: "insensitive" } } },
-        { vehicle: { licensePlate: { contains: params.search, mode: "insensitive" } } },
-      ];
-    }
+      if (params.search) {
+        where.OR = [
+          { title: { contains: params.search, mode: 'insensitive' } },
+          { invoiceNumber: { contains: params.search, mode: 'insensitive' } },
+          { techName: { contains: params.search, mode: 'insensitive' } },
+          { vehicle: { make: { contains: params.search, mode: 'insensitive' } } },
+          { vehicle: { model: { contains: params.search, mode: 'insensitive' } } },
+          { vehicle: { licensePlate: { contains: params.search, mode: 'insensitive' } } },
+        ]
+      }
 
-    if (params.type && params.type !== "all") {
-      where.type = params.type;
-    }
+      if (params.type && params.type !== 'all') {
+        where.type = params.type
+      }
 
-    if (params.status && params.status !== "all") {
-      where.status = params.status;
-    }
+      if (params.status && params.status !== 'all') {
+        where.status = params.status
+      }
 
-    const [records, total] = await Promise.all([
-      db.serviceRecord.findMany({
-        where,
-        include: {
-          vehicle: {
-            select: {
-              id: true,
-              make: true,
-              model: true,
-              year: true,
-              licensePlate: true,
-              customer: { select: { id: true, name: true } },
+      const [records, total] = await Promise.all([
+        db.serviceRecord.findMany({
+          where,
+          include: {
+            vehicle: {
+              select: {
+                id: true,
+                make: true,
+                model: true,
+                year: true,
+                licensePlate: true,
+                customer: { select: { id: true, name: true } },
+              },
             },
           },
-        },
-        orderBy: [{ startDateTime: { sort: "desc", nulls: "last" } }, { serviceDate: "desc" }],
-        skip,
-        take: pageSize,
-      }),
-      db.serviceRecord.count({ where }),
-    ]);
+          orderBy: [{ startDateTime: { sort: 'desc', nulls: 'last' } }, { serviceDate: 'desc' }],
+          skip,
+          take: pageSize,
+        }),
+        db.serviceRecord.count({ where }),
+      ])
 
-    return {
-      records,
-      total,
-      page,
-      pageSize,
-      totalPages: Math.ceil(total / pageSize),
-    };
-  }, { requiredPermissions: [{ action: PermissionAction.READ, subject: PermissionSubject.SERVICES }] });
+      return {
+        records,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.ceil(total / pageSize),
+      }
+    },
+    {
+      requiredPermissions: [{ action: PermissionAction.READ, subject: PermissionSubject.SERVICES }],
+    }
+  )
 }
 
 export async function getServiceRecord(recordId: string) {
-  return withAuth(async ({ organizationId }) => {
-    const record = await db.serviceRecord.findFirst({
-      where: { id: recordId, vehicle: { organizationId } },
-      include: {
-        partItems: true,
-        laborItems: true,
-        attachments: true,
-        payments: { orderBy: { date: "desc" } },
-        vehicle: {
-          select: {
-            id: true,
-            make: true,
-            model: true,
-            year: true,
-            vin: true,
-            licensePlate: true,
-            mileage: true,
-            customer: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                phone: true,
-                address: true,
-                company: true,
-                telegramChatId: true,
+  return withAuth(
+    async ({ organizationId }) => {
+      const record = await db.serviceRecord.findFirst({
+        where: { id: recordId, vehicle: { organizationId } },
+        include: {
+          partItems: true,
+          laborItems: true,
+          attachments: true,
+          payments: { orderBy: { date: 'desc' } },
+          vehicle: {
+            select: {
+              id: true,
+              assetType: true,
+              make: true,
+              model: true,
+              year: true,
+              vin: true,
+              licensePlate: true,
+              mileage: true,
+              customer: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phone: true,
+                  address: true,
+                  company: true,
+                  telegramChatId: true,
+                },
               },
             },
           },
         },
-      },
-    });
+      })
 
-    return record;
-  }, { requiredPermissions: [{ action: PermissionAction.READ, subject: PermissionSubject.SERVICES }] });
+      return record
+    },
+    {
+      requiredPermissions: [{ action: PermissionAction.READ, subject: PermissionSubject.SERVICES }],
+    }
+  )
 }
 
 export async function createServiceRecord(input: unknown) {
-  return withAuth(async ({ userId, organizationId }) => {
-    const data = createServiceSchema.parse(input);
-    const vehicle = await db.vehicle.findFirst({
-      where: { id: data.vehicleId, organizationId },
-      include: { customer: { select: { taxExempt: true } } },
-    });
-    if (!vehicle) throw new Error("Vehicle not found");
+  return withAuth(
+    async ({ userId, organizationId }) => {
+      const data = createServiceSchema.parse(input)
+      const vehicle = await db.vehicle.findFirst({
+        where: { id: data.vehicleId, organizationId },
+        include: { customer: { select: { taxExempt: true } } },
+      })
+      if (!vehicle) throw new Error('Vehicle not found')
 
-    // Auto-populate shop name and invoice prefix from settings
-    const [settings, org] = await Promise.all([
-      db.appSetting.findMany({
-        where: {
-          organizationId,
-          key: { in: ["workshop.invoicePrefix", "workshop.invoiceStartNumber", "workshop.taxInclusive"] },
-        },
-      }),
-      db.organization.findUnique({
-        where: { id: organizationId },
-        select: { name: true },
-      }),
-    ]);
-    const settingsMap: Record<string, string> = {};
-    for (const s of settings) settingsMap[s.key] = s.value;
+      // Auto-populate shop name and invoice prefix from settings
+      const [settings, org] = await Promise.all([
+        db.appSetting.findMany({
+          where: {
+            organizationId,
+            key: {
+              in: [
+                'workshop.invoicePrefix',
+                'workshop.invoiceStartNumber',
+                'workshop.taxInclusive',
+              ],
+            },
+          },
+        }),
+        db.organization.findUnique({
+          where: { id: organizationId },
+          select: { name: true },
+        }),
+      ])
+      const settingsMap: Record<string, string> = {}
+      for (const s of settings) settingsMap[s.key] = s.value
 
-    const shopName = data.shopName || org?.name || undefined;
-    const prefix = resolveInvoicePrefix(settingsMap["workshop.invoicePrefix"] || "{year}-");
+      const shopName = data.shopName || org?.name || undefined
+      const prefix = resolveInvoicePrefix(settingsMap['workshop.invoicePrefix'] || '{year}-')
 
-    // If the caller didn't pass taxInclusive, inherit the org's current setting.
-    // Existing callers (vehicle-detail-client, ServiceForm) don't send the field,
-    // so they pick up the workshop default; explicit values are respected.
-    const inputObj = (input ?? {}) as Record<string, unknown>;
-    const taxInclusive =
-      "taxInclusive" in inputObj
-        ? data.taxInclusive
-        : settingsMap["workshop.taxInclusive"] === "true";
+      // If the caller didn't pass taxInclusive, inherit the org's current setting.
+      // Existing callers (vehicle-detail-client, ServiceForm) don't send the field,
+      // so they pick up the workshop default; explicit values are respected.
+      const inputObj = (input ?? {}) as Record<string, unknown>
+      const taxInclusive =
+        'taxInclusive' in inputObj
+          ? data.taxInclusive
+          : settingsMap['workshop.taxInclusive'] === 'true'
 
-    // Tax-exempt customer: force taxRate to 0 (overrides whatever the caller sent).
-    if (vehicle.customer?.taxExempt) {
-      data.taxRate = 0;
-      data.taxAmount = 0;
-    }
-
-    // Generate sequential invoice number
-    const startNumber = parseInt(settingsMap["workshop.invoiceStartNumber"] || "0", 10);
-    const lastRecord = await db.serviceRecord.findFirst({
-      where: { vehicle: { organizationId } },
-      orderBy: { createdAt: "desc" },
-      select: { invoiceNumber: true },
-    });
-    let nextNum = startNumber || 1001;
-    if (lastRecord?.invoiceNumber) {
-      const match = lastRecord.invoiceNumber.match(/(\d+)$/);
-      if (match) {
-        const lastNum = parseInt(match[1], 10) + 1;
-        nextNum = Math.max(nextNum, lastNum);
+      // Tax-exempt customer: force taxRate to 0 (overrides whatever the caller sent).
+      if (vehicle.customer?.taxExempt) {
+        data.taxRate = 0
+        data.taxAmount = 0
       }
-    }
-    const invoiceNumber = `${prefix}${nextNum}`;
 
-    // Clear start number after first use so it doesn't override future increments
-    if (startNumber && nextNum === startNumber) {
-      await db.appSetting.updateMany({
-        where: { organizationId, key: "workshop.invoiceStartNumber" },
-        data: { value: "" },
-      });
-    }
-
-    const { partItems, laborItems, attachments, serviceDate, invoiceDate, invoiceDueDate, warrantyMonths, warrantyMileage, warrantyNotes, ...recordData } = data;
-
-    const record = await db.$transaction(async (tx) => {
-      const created = await tx.serviceRecord.create({
-        data: {
-          ...recordData,
-          taxInclusive,
-          shopName,
-          invoiceNumber,
-          serviceDate: new Date(serviceDate),
-          invoiceDate: invoiceDate ? new Date(invoiceDate) : new Date(serviceDate),
-          invoiceDueDate: invoiceDueDate ? new Date(invoiceDueDate) : undefined,
-          warrantyMonths: warrantyMonths || null,
-          warrantyMileage: warrantyMileage || null,
-          warrantyNotes: warrantyNotes || null,
-          warrantyExpiresAt: warrantyMonths
-            ? (() => {
-                const base = new Date(serviceDate || Date.now());
-                base.setMonth(base.getMonth() + warrantyMonths);
-                return base;
-              })()
-            : null,
-        },
-      });
-
-      if (partItems && partItems.length > 0) {
-        // Enrich parts with unitCost from inventory and deduct stock
-        const enrichedParts = [];
-        for (const p of partItems) {
-          let resolvedUnitCost = p.unitCost ?? 0;
-          if (p.inventoryPartId) {
-            const invPart = await tx.inventoryPart.findFirst({
-              where: { id: p.inventoryPartId, organizationId },
-            });
-            if (invPart) {
-              resolvedUnitCost = invPart.unitCost ?? resolvedUnitCost;
-              const newQty = invPart.quantity - Math.ceil(p.quantity);
-              await tx.inventoryPart.update({
-                where: { id: p.inventoryPartId },
-                data: { quantity: Math.max(0, newQty) },
-              });
-            }
-          }
-          enrichedParts.push({
-            partNumber: p.partNumber,
-            name: p.name,
-            quantity: p.quantity,
-            unitPrice: p.unitPrice,
-            total: p.total,
-            unitCost: resolvedUnitCost,
-            markupPercent: p.markupPercent ?? 0,
-            inventoryPartId: p.inventoryPartId || null,
-            serviceRecordId: created.id,
-          });
+      // Generate sequential invoice number
+      const startNumber = parseInt(settingsMap['workshop.invoiceStartNumber'] || '0', 10)
+      const lastRecord = await db.serviceRecord.findFirst({
+        where: { vehicle: { organizationId } },
+        orderBy: { createdAt: 'desc' },
+        select: { invoiceNumber: true },
+      })
+      let nextNum = startNumber || 1001
+      if (lastRecord?.invoiceNumber) {
+        const match = lastRecord.invoiceNumber.match(/(\d+)$/)
+        if (match) {
+          const lastNum = parseInt(match[1], 10) + 1
+          nextNum = Math.max(nextNum, lastNum)
         }
+      }
+      const invoiceNumber = `${prefix}${nextNum}`
 
-        await tx.servicePart.createMany({ data: enrichedParts });
+      // Clear start number after first use so it doesn't override future increments
+      if (startNumber && nextNum === startNumber) {
+        await db.appSetting.updateMany({
+          where: { organizationId, key: 'workshop.invoiceStartNumber' },
+          data: { value: '' },
+        })
       }
 
-      if (laborItems && laborItems.length > 0) {
-        await tx.serviceLabor.createMany({
-          data: laborItems.map((l) => ({
-            ...l,
-            serviceRecordId: created.id,
-          })),
-        });
-      }
+      const {
+        partItems,
+        laborItems,
+        attachments,
+        serviceDate,
+        invoiceDate,
+        invoiceDueDate,
+        warrantyMonths,
+        warrantyMileage,
+        warrantyNotes,
+        ...recordData
+      } = data
 
-      if (attachments && attachments.length > 0) {
-        await tx.serviceAttachment.createMany({
-          data: attachments.map((a) => ({
-            ...a,
-            serviceRecordId: created.id,
-          })),
-        });
-      }
-
-      return created;
-    });
-
-    // Revalidate inventory if any parts were sourced from inventory
-    const hasInventoryParts = partItems?.some((p) => p.inventoryPartId);
-    if (hasInventoryParts) {
-      revalidatePath("/inventory");
-    }
-
-    // Update vehicle mileage if service mileage is higher, and reset maintenance dismissed
-    const vehicleUpdate: { mileage?: number; maintenanceDismissed: boolean; maintenanceDismissedAt: null } = {
-      maintenanceDismissed: false,
-      maintenanceDismissedAt: null,
-    };
-    if (data.mileage && data.mileage > vehicle.mileage) {
-      vehicleUpdate.mileage = data.mileage;
-    }
-    await db.vehicle.update({
-      where: { id: vehicle.id },
-      data: vehicleUpdate,
-    });
-
-    revalidatePath("/");
-    revalidatePath(`/vehicles/${data.vehicleId}`);
-    revalidatePath("/services");
-    return record;
-  }, {
-    requiredPermissions: [{ action: PermissionAction.CREATE, subject: PermissionSubject.SERVICES }],
-    audit: ({ result }) => ({
-      action: "service.create",
-      entity: "ServiceRecord",
-      entityId: result.id,
-      message: `Created service record ${result.invoiceNumber || result.id}`,
-      metadata: { serviceRecordId: result.id, vehicleId: result.vehicleId },
-    }),
-  });
-}
-
-export async function updateServiceRecord(input: unknown) {
-  return withAuth(async ({ organizationId }) => {
-    const data = updateServiceSchema.parse(input);
-    const existing = await db.serviceRecord.findFirst({
-      where: { id: data.id, vehicle: { organizationId } },
-      include: {
-        attachments: { select: { fileUrl: true, category: true } },
-        vehicle: { select: { id: true, mileage: true, make: true, model: true, year: true, licensePlate: true } },
-      },
-    });
-    if (!existing) throw new Error("Service record not found");
-
-    const { id, partItems, laborItems, attachments, serviceDate: _sd, invoiceDate: _id, invoiceDueDate: _idd, warrantyMonths: _wm, warrantyMileage: _wmil, warrantyNotes: _wn, ...recordData } = data;
-
-    // Determine which categories are being replaced and which files were removed
-    let removedFileUrls: string[] = [];
-    let categoriesToReplace: string[] = [];
-    if (attachments !== undefined) {
-      categoriesToReplace = [...new Set(attachments.map((a) => a.category || "diagnostic"))];
-      const existingInCategories = existing.attachments.filter((a) =>
-        categoriesToReplace.includes(a.category)
-      );
-      const newFileUrls = new Set(attachments.map((a) => a.fileUrl));
-      removedFileUrls = existingInCategories
-        .map((a) => a.fileUrl)
-        .filter((url) => !newFileUrls.has(url));
-    }
-
-    const record = await db.$transaction(async (tx) => {
-      const updated = await tx.serviceRecord.update({
-        where: { id },
-        data: {
-          ...recordData,
-          description: recordData.description !== undefined ? (recordData.description || null) : undefined,
-          techName: recordData.techName !== undefined ? (recordData.techName || null) : undefined,
-          diagnosticNotes: recordData.diagnosticNotes !== undefined ? (recordData.diagnosticNotes || null) : undefined,
-          invoiceNotes: recordData.invoiceNotes !== undefined ? (recordData.invoiceNotes || null) : undefined,
-          invoiceNumber: recordData.invoiceNumber !== undefined ? (recordData.invoiceNumber || null) : undefined,
-          mileage: recordData.mileage !== undefined ? (recordData.mileage ?? null) : undefined,
-          serviceDate: data.serviceDate ? new Date(data.serviceDate) : undefined,
-          invoiceDate: data.invoiceDate ? new Date(data.invoiceDate) : undefined,
-          invoiceDueDate: data.invoiceDueDate ? new Date(data.invoiceDueDate) : undefined,
-          warrantyMonths: data.warrantyMonths !== undefined ? (data.warrantyMonths || null) : undefined,
-          warrantyMileage: data.warrantyMileage !== undefined ? (data.warrantyMileage || null) : undefined,
-          warrantyNotes: data.warrantyNotes !== undefined ? (data.warrantyNotes || null) : undefined,
-          warrantyExpiresAt: data.warrantyMonths !== undefined
-            ? (data.warrantyMonths
+      const record = await db.$transaction(async (tx) => {
+        const created = await tx.serviceRecord.create({
+          data: {
+            ...recordData,
+            taxInclusive,
+            shopName,
+            invoiceNumber,
+            serviceDate: new Date(serviceDate),
+            invoiceDate: invoiceDate ? new Date(invoiceDate) : new Date(serviceDate),
+            invoiceDueDate: invoiceDueDate ? new Date(invoiceDueDate) : undefined,
+            warrantyMonths: warrantyMonths || null,
+            warrantyMileage: warrantyMileage || null,
+            warrantyNotes: warrantyNotes || null,
+            warrantyExpiresAt: warrantyMonths
               ? (() => {
-                  const serviceDate = data.serviceDate || existing.serviceDate;
-                  const base = new Date(serviceDate);
-                  base.setMonth(base.getMonth() + data.warrantyMonths);
-                  return base;
+                  const base = new Date(serviceDate || Date.now())
+                  base.setMonth(base.getMonth() + warrantyMonths)
+                  return base
                 })()
-              : null)
-            : undefined,
-        },
-      });
+              : null,
+          },
+        })
 
-      // Replace parts if provided
-      if (partItems !== undefined) {
-        await tx.servicePart.deleteMany({ where: { serviceRecordId: id } });
-        if (partItems.length > 0) {
-          await tx.servicePart.createMany({
-            data: partItems.map((p) => ({
+        if (partItems && partItems.length > 0) {
+          // Enrich parts with unitCost from inventory and deduct stock
+          const enrichedParts = []
+          for (const p of partItems) {
+            let resolvedUnitCost = p.unitCost ?? 0
+            if (p.inventoryPartId) {
+              const invPart = await tx.inventoryPart.findFirst({
+                where: { id: p.inventoryPartId, organizationId },
+              })
+              if (invPart) {
+                resolvedUnitCost = invPart.unitCost ?? resolvedUnitCost
+                const newQty = invPart.quantity - Math.ceil(p.quantity)
+                await tx.inventoryPart.update({
+                  where: { id: p.inventoryPartId },
+                  data: { quantity: Math.max(0, newQty) },
+                })
+              }
+            }
+            enrichedParts.push({
               partNumber: p.partNumber,
               name: p.name,
               quantity: p.quantity,
               unitPrice: p.unitPrice,
               total: p.total,
-              unitCost: p.unitCost ?? 0,
+              unitCost: resolvedUnitCost,
               markupPercent: p.markupPercent ?? 0,
               inventoryPartId: p.inventoryPartId || null,
-              serviceRecordId: id,
-            })),
-          });
-        }
-      }
+              serviceRecordId: created.id,
+            })
+          }
 
-      // Replace labor if provided
-      if (laborItems !== undefined) {
-        await tx.serviceLabor.deleteMany({ where: { serviceRecordId: id } });
-        if (laborItems.length > 0) {
+          await tx.servicePart.createMany({ data: enrichedParts })
+        }
+
+        if (laborItems && laborItems.length > 0) {
           await tx.serviceLabor.createMany({
             data: laborItems.map((l) => ({
               ...l,
-              serviceRecordId: id,
+              serviceRecordId: created.id,
             })),
-          });
+          })
         }
-      }
 
-      // Replace attachments if provided (only for the categories included in the payload)
-      if (attachments !== undefined) {
-        if (categoriesToReplace.length > 0) {
-          await tx.serviceAttachment.deleteMany({
-            where: { serviceRecordId: id, category: { in: categoriesToReplace } },
-          });
-        }
-        if (attachments.length > 0) {
+        if (attachments && attachments.length > 0) {
           await tx.serviceAttachment.createMany({
             data: attachments.map((a) => ({
               ...a,
-              serviceRecordId: id,
+              serviceRecordId: created.id,
             })),
-          });
+          })
         }
+
+        return created
+      })
+
+      // Revalidate inventory if any parts were sourced from inventory
+      const hasInventoryParts = partItems?.some((p) => p.inventoryPartId)
+      if (hasInventoryParts) {
+        revalidatePath('/inventory')
       }
 
-      return updated;
-    });
-
-    // Update vehicle mileage if this is the latest service record and mileage is higher
-    if (recordData.mileage && recordData.mileage > existing.vehicle.mileage) {
-      const latestRecord = await db.serviceRecord.findFirst({
-        where: { vehicleId: existing.vehicle.id },
-        orderBy: [{ startDateTime: { sort: 'desc', nulls: 'last' } }, { serviceDate: 'desc' }],
-        select: { id: true },
-      });
-      if (latestRecord?.id === id) {
-        await db.vehicle.update({
-          where: { id: existing.vehicle.id },
-          data: { mileage: recordData.mileage },
-        });
+      // Update vehicle mileage if service mileage is higher, and reset maintenance dismissed
+      const vehicleUpdate: {
+        mileage?: number
+        maintenanceDismissed: boolean
+        maintenanceDismissedAt: null
+      } = {
+        maintenanceDismissed: false,
+        maintenanceDismissedAt: null,
       }
-    }
-
-    // Delete removed attachment files from disk (after successful DB transaction)
-    for (const fileUrl of removedFileUrls) {
-      try {
-        await unlink(resolveUploadPath(fileUrl));
-      } catch (err) {
-        console.warn(`[updateServiceRecord] Failed to delete file "${fileUrl}":`, err);
+      if (data.mileage && data.mileage > vehicle.mileage) {
+        vehicleUpdate.mileage = data.mileage
       }
-    }
+      await db.vehicle.update({
+        where: { id: vehicle.id },
+        data: vehicleUpdate,
+      })
 
-    // Notify workboard if status changed
-    if (record.status !== existing.status) {
-      notificationBus.emit("workboard", {
-        type: "job_status_changed",
-        organizationId,
-        serviceRecordId: id,
-        status: record.status,
-        serviceRecord: {
-          id: existing.id,
-          title: record.title || existing.title,
-          status: record.status,
-          vehicle: existing.vehicle,
-        },
-      });
+      revalidatePath('/')
+      revalidatePath(`/vehicles/${data.vehicleId}`)
+      revalidatePath('/services')
+      return record
+    },
+    {
+      requiredPermissions: [
+        { action: PermissionAction.CREATE, subject: PermissionSubject.SERVICES },
+      ],
+      audit: ({ result }) => ({
+        action: 'service.create',
+        entity: 'ServiceRecord',
+        entityId: result.id,
+        message: `Created service record ${result.invoiceNumber || result.id}`,
+        metadata: { serviceRecordId: result.id, vehicleId: result.vehicleId },
+      }),
     }
-
-    revalidatePath("/");
-    revalidatePath(`/vehicles/${existing.vehicleId}`);
-    revalidatePath(`/vehicles/${existing.vehicleId}/service/${id}`);
-    revalidatePath("/services");
-    return record;
-  }, {
-    requiredPermissions: [{ action: PermissionAction.UPDATE, subject: PermissionSubject.SERVICES }],
-    audit: ({ result }) => ({
-      action: "service.update",
-      entity: "ServiceRecord",
-      entityId: result.id,
-      message: `Updated service record ${result.invoiceNumber || result.id}`,
-      metadata: { serviceRecordId: result.id },
-    }),
-  });
+  )
 }
 
-export async function updateServiceStatus(recordId: string, status: string) {
-  return withAuth(async ({ organizationId }) => {
-    const record = await db.serviceRecord.findFirst({
-      where: { id: recordId, vehicle: { organizationId } },
-      include: {
-        vehicle: {
-          select: { id: true, make: true, model: true, year: true, licensePlate: true },
-        },
-      },
-    });
-    if (!record) throw new Error("Record not found");
-
-    await db.serviceRecord.update({
-      where: { id: recordId },
-      data: { status },
-    });
-
-    notificationBus.emit("workboard", {
-      type: "job_status_changed",
-      organizationId,
-      serviceRecordId: recordId,
-      status,
-      serviceRecord: {
-        id: record.id,
-        title: record.title,
-        status,
-        vehicle: record.vehicle,
-      },
-    });
-
-    revalidatePath("/");
-    revalidatePath("/work-orders");
-    revalidatePath("/services");
-    revalidatePath(`/vehicles/${record.vehicleId}`);
-    return { success: true, recordId, status };
-  }, {
-    requiredPermissions: [{ action: PermissionAction.UPDATE, subject: PermissionSubject.SERVICES }],
-    audit: ({ result }) => ({
-      action: "service.status",
-      entity: "ServiceRecord",
-      entityId: result.recordId,
-      message: `Changed service record status to ${result.status}`,
-      metadata: { serviceRecordId: result.recordId, status: result.status },
-    }),
-  });
-}
-
-export async function toggleManuallyPaid(recordId: string) {
-  return withAuth(async ({ organizationId }) => {
-    const record = await db.serviceRecord.findFirst({
-      where: { id: recordId, vehicle: { organizationId } },
-    });
-    if (!record) throw new Error("Record not found");
-
-    await db.serviceRecord.update({
-      where: { id: recordId },
-      data: { manuallyPaid: !record.manuallyPaid },
-    });
-
-    revalidatePath("/");
-    revalidatePath("/services");
-    revalidatePath(`/vehicles/${record.vehicleId}`);
-    revalidatePath(`/vehicles/${record.vehicleId}/service/${recordId}`);
-    return { success: true, manuallyPaid: !record.manuallyPaid };
-  }, { requiredPermissions: [{ action: PermissionAction.UPDATE, subject: PermissionSubject.SERVICES }] });
-}
-
-export async function getWorkOrders(params: {
-  page?: number;
-  pageSize?: number;
-  search?: string;
-  status?: string;
-  sortBy?: string;
-  sortOrder?: "asc" | "desc";
-}) {
-  return withAuth(async ({ organizationId }) => {
-    const page = params.page || 1;
-    const pageSize = params.pageSize || 20;
-    const skip = (page - 1) * pageSize;
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: any = { vehicle: { organizationId } };
-
-    if (params.status === "active") {
-      where.status = { not: "completed" };
-    } else if (params.status && params.status !== "all") {
-      where.status = params.status;
-    }
-
-    if (params.search) {
-      where.OR = [
-        { title: { contains: params.search, mode: "insensitive" } },
-        { invoiceNumber: { contains: params.search, mode: "insensitive" } },
-        { techName: { contains: params.search, mode: "insensitive" } },
-        { vehicle: { licensePlate: { contains: params.search, mode: "insensitive" } } },
-        { vehicle: { customer: { name: { contains: params.search, mode: "insensitive" } } } },
-      ];
-    }
-
-    const [records, total, statusCounts] = await Promise.all([
-      db.serviceRecord.findMany({
-        where,
+export async function updateServiceRecord(input: unknown) {
+  return withAuth(
+    async ({ organizationId }) => {
+      const data = updateServiceSchema.parse(input)
+      const existing = await db.serviceRecord.findFirst({
+        where: { id: data.id, vehicle: { organizationId } },
         include: {
+          attachments: { select: { fileUrl: true, category: true } },
           vehicle: {
             select: {
               id: true,
+              mileage: true,
               make: true,
               model: true,
               year: true,
               licensePlate: true,
-              customer: { select: { id: true, name: true, email: true, phone: true } },
             },
           },
         },
-        orderBy: (() => {
-          const dir = params.sortOrder || "desc";
-          switch (params.sortBy) {
-            case "invoiceNumber": return { invoiceNumber: dir };
-            case "title": return { title: dir };
-            case "status": return { status: dir };
-            case "techName": return { techName: dir };
-            case "totalAmount": return { totalAmount: dir };
-            case "serviceDate":
-            default: return [{ startDateTime: { sort: dir, nulls: dir === "desc" ? "last" : "first" } }, { serviceDate: dir }];
+      })
+      if (!existing) throw new Error('Service record not found')
+
+      const {
+        id,
+        partItems,
+        laborItems,
+        attachments,
+        serviceDate: _sd,
+        invoiceDate: _id,
+        invoiceDueDate: _idd,
+        warrantyMonths: _wm,
+        warrantyMileage: _wmil,
+        warrantyNotes: _wn,
+        ...recordData
+      } = data
+
+      // Determine which categories are being replaced and which files were removed
+      let removedFileUrls: string[] = []
+      let categoriesToReplace: string[] = []
+      if (attachments !== undefined) {
+        categoriesToReplace = [...new Set(attachments.map((a) => a.category || 'diagnostic'))]
+        const existingInCategories = existing.attachments.filter((a) =>
+          categoriesToReplace.includes(a.category)
+        )
+        const newFileUrls = new Set(attachments.map((a) => a.fileUrl))
+        removedFileUrls = existingInCategories
+          .map((a) => a.fileUrl)
+          .filter((url) => !newFileUrls.has(url))
+      }
+
+      const record = await db.$transaction(async (tx) => {
+        const updated = await tx.serviceRecord.update({
+          where: { id },
+          data: {
+            ...recordData,
+            description:
+              recordData.description !== undefined ? recordData.description || null : undefined,
+            techName: recordData.techName !== undefined ? recordData.techName || null : undefined,
+            diagnosticNotes:
+              recordData.diagnosticNotes !== undefined
+                ? recordData.diagnosticNotes || null
+                : undefined,
+            invoiceNotes:
+              recordData.invoiceNotes !== undefined ? recordData.invoiceNotes || null : undefined,
+            invoiceNumber:
+              recordData.invoiceNumber !== undefined ? recordData.invoiceNumber || null : undefined,
+            mileage: recordData.mileage !== undefined ? (recordData.mileage ?? null) : undefined,
+            serviceDate: data.serviceDate ? new Date(data.serviceDate) : undefined,
+            invoiceDate: data.invoiceDate ? new Date(data.invoiceDate) : undefined,
+            invoiceDueDate: data.invoiceDueDate ? new Date(data.invoiceDueDate) : undefined,
+            warrantyMonths:
+              data.warrantyMonths !== undefined ? data.warrantyMonths || null : undefined,
+            warrantyMileage:
+              data.warrantyMileage !== undefined ? data.warrantyMileage || null : undefined,
+            warrantyNotes:
+              data.warrantyNotes !== undefined ? data.warrantyNotes || null : undefined,
+            warrantyExpiresAt:
+              data.warrantyMonths !== undefined
+                ? data.warrantyMonths
+                  ? (() => {
+                      const serviceDate = data.serviceDate || existing.serviceDate
+                      const base = new Date(serviceDate)
+                      base.setMonth(base.getMonth() + data.warrantyMonths)
+                      return base
+                    })()
+                  : null
+                : undefined,
+          },
+        })
+
+        // Replace parts if provided
+        if (partItems !== undefined) {
+          await tx.servicePart.deleteMany({ where: { serviceRecordId: id } })
+          if (partItems.length > 0) {
+            await tx.servicePart.createMany({
+              data: partItems.map((p) => ({
+                partNumber: p.partNumber,
+                name: p.name,
+                quantity: p.quantity,
+                unitPrice: p.unitPrice,
+                total: p.total,
+                unitCost: p.unitCost ?? 0,
+                markupPercent: p.markupPercent ?? 0,
+                inventoryPartId: p.inventoryPartId || null,
+                serviceRecordId: id,
+              })),
+            })
           }
-        })(),
-        skip,
-        take: pageSize,
-      }),
-      db.serviceRecord.count({ where }),
-      db.serviceRecord.groupBy({
-        by: ["status"],
-        where: { vehicle: { organizationId } },
-        _count: true,
-      }),
-    ]);
+        }
 
-    const counts: Record<string, number> = {};
-    for (const g of statusCounts) {
-      counts[g.status] = g._count;
+        // Replace labor if provided
+        if (laborItems !== undefined) {
+          await tx.serviceLabor.deleteMany({ where: { serviceRecordId: id } })
+          if (laborItems.length > 0) {
+            await tx.serviceLabor.createMany({
+              data: laborItems.map((l) => ({
+                ...l,
+                serviceRecordId: id,
+              })),
+            })
+          }
+        }
+
+        // Replace attachments if provided (only for the categories included in the payload)
+        if (attachments !== undefined) {
+          if (categoriesToReplace.length > 0) {
+            await tx.serviceAttachment.deleteMany({
+              where: { serviceRecordId: id, category: { in: categoriesToReplace } },
+            })
+          }
+          if (attachments.length > 0) {
+            await tx.serviceAttachment.createMany({
+              data: attachments.map((a) => ({
+                ...a,
+                serviceRecordId: id,
+              })),
+            })
+          }
+        }
+
+        return updated
+      })
+
+      // Update vehicle mileage if this is the latest service record and mileage is higher
+      if (recordData.mileage && recordData.mileage > existing.vehicle.mileage) {
+        const latestRecord = await db.serviceRecord.findFirst({
+          where: { vehicleId: existing.vehicle.id },
+          orderBy: [{ startDateTime: { sort: 'desc', nulls: 'last' } }, { serviceDate: 'desc' }],
+          select: { id: true },
+        })
+        if (latestRecord?.id === id) {
+          await db.vehicle.update({
+            where: { id: existing.vehicle.id },
+            data: { mileage: recordData.mileage },
+          })
+        }
+      }
+
+      // Delete removed attachment files from disk (after successful DB transaction)
+      for (const fileUrl of removedFileUrls) {
+        try {
+          await unlink(resolveUploadPath(fileUrl))
+        } catch (err) {
+          console.warn(`[updateServiceRecord] Failed to delete file "${fileUrl}":`, err)
+        }
+      }
+
+      // Notify workboard if status changed
+      if (record.status !== existing.status) {
+        notificationBus.emit('workboard', {
+          type: 'job_status_changed',
+          organizationId,
+          serviceRecordId: id,
+          status: record.status,
+          serviceRecord: {
+            id: existing.id,
+            title: record.title || existing.title,
+            status: record.status,
+            vehicle: existing.vehicle,
+          },
+        })
+      }
+
+      revalidatePath('/')
+      revalidatePath(`/vehicles/${existing.vehicleId}`)
+      revalidatePath(`/vehicles/${existing.vehicleId}/service/${id}`)
+      revalidatePath('/services')
+      return record
+    },
+    {
+      requiredPermissions: [
+        { action: PermissionAction.UPDATE, subject: PermissionSubject.SERVICES },
+      ],
+      audit: ({ result }) => ({
+        action: 'service.update',
+        entity: 'ServiceRecord',
+        entityId: result.id,
+        message: `Updated service record ${result.invoiceNumber || result.id}`,
+        metadata: { serviceRecordId: result.id },
+      }),
     }
+  )
+}
 
-    return {
-      records,
-      total,
-      page,
-      pageSize,
-      totalPages: Math.ceil(total / pageSize),
-      statusCounts: counts,
-    };
-  }, { requiredPermissions: [{ action: PermissionAction.READ, subject: PermissionSubject.WORK_ORDERS }] });
+export async function updateServiceStatus(recordId: string, status: string) {
+  return withAuth(
+    async ({ organizationId }) => {
+      const record = await db.serviceRecord.findFirst({
+        where: { id: recordId, vehicle: { organizationId } },
+        include: {
+          vehicle: {
+            select: { id: true, make: true, model: true, year: true, licensePlate: true },
+          },
+        },
+      })
+      if (!record) throw new Error('Record not found')
+
+      await db.serviceRecord.update({
+        where: { id: recordId },
+        data: { status },
+      })
+
+      notificationBus.emit('workboard', {
+        type: 'job_status_changed',
+        organizationId,
+        serviceRecordId: recordId,
+        status,
+        serviceRecord: {
+          id: record.id,
+          title: record.title,
+          status,
+          vehicle: record.vehicle,
+        },
+      })
+
+      revalidatePath('/')
+      revalidatePath('/work-orders')
+      revalidatePath('/services')
+      revalidatePath(`/vehicles/${record.vehicleId}`)
+      return { success: true, recordId, status }
+    },
+    {
+      requiredPermissions: [
+        { action: PermissionAction.UPDATE, subject: PermissionSubject.SERVICES },
+      ],
+      audit: ({ result }) => ({
+        action: 'service.status',
+        entity: 'ServiceRecord',
+        entityId: result.recordId,
+        message: `Changed service record status to ${result.status}`,
+        metadata: { serviceRecordId: result.recordId, status: result.status },
+      }),
+    }
+  )
+}
+
+export async function toggleManuallyPaid(recordId: string) {
+  return withAuth(
+    async ({ organizationId }) => {
+      const record = await db.serviceRecord.findFirst({
+        where: { id: recordId, vehicle: { organizationId } },
+      })
+      if (!record) throw new Error('Record not found')
+
+      await db.serviceRecord.update({
+        where: { id: recordId },
+        data: { manuallyPaid: !record.manuallyPaid },
+      })
+
+      revalidatePath('/')
+      revalidatePath('/services')
+      revalidatePath(`/vehicles/${record.vehicleId}`)
+      revalidatePath(`/vehicles/${record.vehicleId}/service/${recordId}`)
+      return { success: true, manuallyPaid: !record.manuallyPaid }
+    },
+    {
+      requiredPermissions: [
+        { action: PermissionAction.UPDATE, subject: PermissionSubject.SERVICES },
+      ],
+    }
+  )
+}
+
+export async function getWorkOrders(params: {
+  page?: number
+  pageSize?: number
+  search?: string
+  status?: string
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
+}) {
+  return withAuth(
+    async ({ organizationId }) => {
+      const page = params.page || 1
+      const pageSize = params.pageSize || 20
+      const skip = (page - 1) * pageSize
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const where: any = { vehicle: { organizationId } }
+
+      if (params.status === 'active') {
+        where.status = { not: 'completed' }
+      } else if (params.status && params.status !== 'all') {
+        where.status = params.status
+      }
+
+      if (params.search) {
+        where.OR = [
+          { title: { contains: params.search, mode: 'insensitive' } },
+          { invoiceNumber: { contains: params.search, mode: 'insensitive' } },
+          { techName: { contains: params.search, mode: 'insensitive' } },
+          { vehicle: { licensePlate: { contains: params.search, mode: 'insensitive' } } },
+          { vehicle: { customer: { name: { contains: params.search, mode: 'insensitive' } } } },
+        ]
+      }
+
+      const [records, total, statusCounts] = await Promise.all([
+        db.serviceRecord.findMany({
+          where,
+          include: {
+            vehicle: {
+              select: {
+                id: true,
+                make: true,
+                model: true,
+                year: true,
+                licensePlate: true,
+                customer: { select: { id: true, name: true, email: true, phone: true } },
+              },
+            },
+          },
+          orderBy: (() => {
+            const dir = params.sortOrder || 'desc'
+            switch (params.sortBy) {
+              case 'invoiceNumber':
+                return { invoiceNumber: dir }
+              case 'title':
+                return { title: dir }
+              case 'status':
+                return { status: dir }
+              case 'techName':
+                return { techName: dir }
+              case 'totalAmount':
+                return { totalAmount: dir }
+              case 'serviceDate':
+              default:
+                return [
+                  { startDateTime: { sort: dir, nulls: dir === 'desc' ? 'last' : 'first' } },
+                  { serviceDate: dir },
+                ]
+            }
+          })(),
+          skip,
+          take: pageSize,
+        }),
+        db.serviceRecord.count({ where }),
+        db.serviceRecord.groupBy({
+          by: ['status'],
+          where: { vehicle: { organizationId } },
+          _count: true,
+        }),
+      ])
+
+      const counts: Record<string, number> = {}
+      for (const g of statusCounts) {
+        counts[g.status] = g._count
+      }
+
+      return {
+        records,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.ceil(total / pageSize),
+        statusCounts: counts,
+      }
+    },
+    {
+      requiredPermissions: [
+        { action: PermissionAction.READ, subject: PermissionSubject.WORK_ORDERS },
+      ],
+    }
+  )
 }
 
 export async function deleteServiceRecord(recordId: string) {
-  return withAuth(async ({ organizationId }) => {
-    const record = await db.serviceRecord.findFirst({
-      where: { id: recordId, vehicle: { organizationId } },
-      include: { attachments: true },
-    });
-    if (!record) throw new Error("Record not found");
+  return withAuth(
+    async ({ organizationId }) => {
+      const record = await db.serviceRecord.findFirst({
+        where: { id: recordId, vehicle: { organizationId } },
+        include: { attachments: true },
+      })
+      if (!record) throw new Error('Record not found')
 
-    // Clean up attachment files from disk
-    for (const attachment of record.attachments) {
-      const filePath = resolveUploadPath(attachment.fileUrl);
-      try {
-        await unlink(filePath);
-      } catch (err) {
-        console.warn(`[deleteServiceRecord] Failed to delete file "${filePath}":`, err);
+      // Clean up attachment files from disk
+      for (const attachment of record.attachments) {
+        const filePath = resolveUploadPath(attachment.fileUrl)
+        try {
+          await unlink(filePath)
+        } catch (err) {
+          console.warn(`[deleteServiceRecord] Failed to delete file "${filePath}":`, err)
+        }
       }
-    }
 
-    await db.serviceRecord.delete({ where: { id: recordId } });
-    revalidatePath("/");
-    revalidatePath(`/vehicles/${record.vehicleId}`);
-    revalidatePath("/services");
-    return { recordId };
-  }, {
-    requiredPermissions: [{ action: PermissionAction.DELETE, subject: PermissionSubject.SERVICES }],
-    audit: ({ result }) => ({
-      action: "service.delete",
-      entity: "ServiceRecord",
-      entityId: result.recordId,
-      message: `Deleted service record ${result.recordId}`,
-      metadata: { serviceRecordId: result.recordId },
-    }),
-  });
+      await db.serviceRecord.delete({ where: { id: recordId } })
+      revalidatePath('/')
+      revalidatePath(`/vehicles/${record.vehicleId}`)
+      revalidatePath('/services')
+      return { recordId }
+    },
+    {
+      requiredPermissions: [
+        { action: PermissionAction.DELETE, subject: PermissionSubject.SERVICES },
+      ],
+      audit: ({ result }) => ({
+        action: 'service.delete',
+        entity: 'ServiceRecord',
+        entityId: result.recordId,
+        message: `Deleted service record ${result.recordId}`,
+        metadata: { serviceRecordId: result.recordId },
+      }),
+    }
+  )
 }
 
 export async function deleteServiceAttachment(attachmentId: string) {
-  return withAuth(async ({ organizationId }) => {
-    const attachment = await db.serviceAttachment.findFirst({
-      where: { id: attachmentId, serviceRecord: { vehicle: { organizationId } } },
-      include: { serviceRecord: { select: { vehicleId: true, id: true } } },
-    });
-    if (!attachment) throw new Error("Attachment not found");
+  return withAuth(
+    async ({ organizationId }) => {
+      const attachment = await db.serviceAttachment.findFirst({
+        where: { id: attachmentId, serviceRecord: { vehicle: { organizationId } } },
+        include: { serviceRecord: { select: { vehicleId: true, id: true } } },
+      })
+      if (!attachment) throw new Error('Attachment not found')
 
-    // Delete file from disk
-    const filePath = resolveUploadPath(attachment.fileUrl);
-    try {
-      await unlink(filePath);
-    } catch (err) {
-      console.warn(`[deleteServiceAttachment] Failed to delete file "${filePath}":`, err);
+      // Delete file from disk
+      const filePath = resolveUploadPath(attachment.fileUrl)
+      try {
+        await unlink(filePath)
+      } catch (err) {
+        console.warn(`[deleteServiceAttachment] Failed to delete file "${filePath}":`, err)
+      }
+
+      await db.serviceAttachment.delete({ where: { id: attachmentId } })
+
+      const { vehicleId, id: serviceId } = attachment.serviceRecord
+      revalidatePath(`/vehicles/${vehicleId}/service/${serviceId}`)
+      return { deleted: true }
+    },
+    {
+      requiredPermissions: [
+        { action: PermissionAction.UPDATE, subject: PermissionSubject.SERVICES },
+      ],
     }
-
-    await db.serviceAttachment.delete({ where: { id: attachmentId } });
-
-    const { vehicleId, id: serviceId } = attachment.serviceRecord;
-    revalidatePath(`/vehicles/${vehicleId}/service/${serviceId}`);
-    return { deleted: true };
-  }, { requiredPermissions: [{ action: PermissionAction.UPDATE, subject: PermissionSubject.SERVICES }] });
+  )
 }
 
 export async function generatePublicLink(serviceRecordId: string) {
-  return withAuth(async ({ organizationId }) => {
-    const record = await db.serviceRecord.findFirst({
-      where: { id: serviceRecordId, vehicle: { organizationId } },
-    });
-    if (!record) throw new Error("Record not found");
+  return withAuth(
+    async ({ organizationId }) => {
+      const record = await db.serviceRecord.findFirst({
+        where: { id: serviceRecordId, vehicle: { organizationId } },
+      })
+      if (!record) throw new Error('Record not found')
 
-    const token = randomUUID();
-    await db.serviceRecord.update({
-      where: { id: serviceRecordId },
-      data: { publicToken: token, sharedAt: new Date() },
-    });
+      const token = randomUUID()
+      await db.serviceRecord.update({
+        where: { id: serviceRecordId },
+        data: { publicToken: token, sharedAt: new Date() },
+      })
 
-    revalidatePath(`/vehicles/${record.vehicleId}/service/${serviceRecordId}`);
-    return { token, organizationId };
-  }, { requiredPermissions: [{ action: PermissionAction.UPDATE, subject: PermissionSubject.SERVICES }] });
+      revalidatePath(`/vehicles/${record.vehicleId}/service/${serviceRecordId}`)
+      return { token, organizationId }
+    },
+    {
+      requiredPermissions: [
+        { action: PermissionAction.UPDATE, subject: PermissionSubject.SERVICES },
+      ],
+    }
+  )
 }
 
 export async function revokePublicLink(serviceRecordId: string) {
-  return withAuth(async ({ organizationId }) => {
-    const record = await db.serviceRecord.findFirst({
-      where: { id: serviceRecordId, vehicle: { organizationId } },
-    });
-    if (!record) throw new Error("Record not found");
+  return withAuth(
+    async ({ organizationId }) => {
+      const record = await db.serviceRecord.findFirst({
+        where: { id: serviceRecordId, vehicle: { organizationId } },
+      })
+      if (!record) throw new Error('Record not found')
 
-    await db.serviceRecord.update({
-      where: { id: serviceRecordId },
-      data: { publicToken: null, sharedAt: null, viewCount: 0, lastViewedAt: null },
-    });
+      await db.serviceRecord.update({
+        where: { id: serviceRecordId },
+        data: { publicToken: null, sharedAt: null, viewCount: 0, lastViewedAt: null },
+      })
 
-    revalidatePath(`/vehicles/${record.vehicleId}/service/${serviceRecordId}`);
-    return { revoked: true };
-  }, { requiredPermissions: [{ action: PermissionAction.UPDATE, subject: PermissionSubject.SERVICES }] });
+      revalidatePath(`/vehicles/${record.vehicleId}/service/${serviceRecordId}`)
+      return { revoked: true }
+    },
+    {
+      requiredPermissions: [
+        { action: PermissionAction.UPDATE, subject: PermissionSubject.SERVICES },
+      ],
+    }
+  )
 }

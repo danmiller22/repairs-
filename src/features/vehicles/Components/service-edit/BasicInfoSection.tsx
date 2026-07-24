@@ -23,7 +23,15 @@ interface BasicInfoSectionProps {
   setSelectedVehicleId: (id: string) => void
   techName: string
   customer?: CustomerInfo | null
-  initialVehicle?: { id: string; make: string; model: string; year: number; licensePlate: string | null } | null
+  initialVehicle?: {
+    id: string
+    assetType: string
+    make: string
+    model: string
+    year: number
+    vin: string | null
+    licensePlate: string | null
+  } | null
 }
 
 export function BasicInfoSection({
@@ -55,13 +63,18 @@ export function BasicInfoSection({
         </div>
         <VehicleCombobox
           value={selectedVehicleId}
-          initialVehicle={initialVehicle ? { ...initialVehicle, customerId: null, customer: null } : null}
+          initialVehicle={
+            initialVehicle ? { ...initialVehicle, customerId: null, customer: null } : null
+          }
           placeholder={vehicleName || t('searchVehicles')}
           noneLabel={t('noVehicleFound')}
           onChange={(id) => {
             if (id) setSelectedVehicleId(id)
           }}
         />
+        <p className="font-mono text-xs text-muted-foreground">
+          VIN: {initialVehicle?.vin || 'Not provided'}
+        </p>
       </div>
 
       {customer && (
@@ -88,16 +101,22 @@ export function BasicInfoSection({
         </div>
       )}
 
-      <div className="space-y-1">
-        <Label htmlFor="mileage" className="text-xs">{serviceType === 'marine' ? t('mileageMarine') : t('mileage')}</Label>
-        <Input
-          id="mileage"
-          name="mileage"
-          type="number"
-          placeholder="50000"
-          defaultValue={initialData.mileage ?? ''}
-        />
-      </div>
+      {initialVehicle?.assetType === 'trailer' ? (
+        <input type="hidden" name="mileage" value="" />
+      ) : (
+        <div className="space-y-1">
+          <Label htmlFor="mileage" className="text-xs">
+            {serviceType === 'marine' ? t('mileageMarine') : t('mileage')}
+          </Label>
+          <Input
+            id="mileage"
+            name="mileage"
+            type="number"
+            placeholder="50000"
+            defaultValue={initialData.mileage ?? ''}
+          />
+        </div>
+      )}
 
       <input type="hidden" name="techName" value={techName} />
     </div>

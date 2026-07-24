@@ -1,6 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TrackingClient } from '@/features/tracking/Components/tracking-client'
+import { syncTrackingProvider } from '@/features/tracking/Actions/trackingActions'
 import type { TrackingAsset, TrackingConnection } from '@/features/tracking/types'
 
 vi.mock('next/navigation', () => ({
@@ -99,6 +100,23 @@ const connections: TrackingConnection[] = [
 ]
 
 describe('TrackingClient', () => {
+  beforeEach(() => {
+    vi.mocked(syncTrackingProvider).mockReset()
+    vi.mocked(syncTrackingProvider).mockResolvedValue({
+      success: true,
+      data: {
+        provider: 'xtralease',
+        assetCount: 114,
+        lastSyncedAt: new Date().toISOString(),
+        skipped: false,
+      },
+    })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('shows trucks and trailers together in one tracking view', () => {
     render(<TrackingClient assets={assets} connections={connections} />)
 
@@ -119,5 +137,29 @@ describe('TrackingClient', () => {
     expect(screen.queryAllByText('TRK-101')).toHaveLength(0)
     expect(screen.getAllByText('TRL-202').length).toBeGreaterThan(0)
     expect(screen.getByTestId('tracking-map')).toHaveTextContent('trailer-1')
+  })
+
+  it('syncs every configured trailer provider from one button', async () => {
+    render(<TrackingClient assets={assets} connections={connections} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sync trailers' }))
+
+    await waitFor(() => {
+      expect(syncTrackingProvider).toHaveBeenCalledWith('xtralease')
+      expect(syncTrackingProvider).toHaveBeenCalledWith('premier')
+    })
+  })
+
+  it('automatically syncs every stale configured provider', async () => {
+    vi.useFakeTimers()
+    render(<TrackingClient assets={assets} connections={connections} />)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(401)
+    })
+
+    expect(syncTrackingProvider).toHaveBeenCalledWith('xtralease')
+    expect(syncTrackingProvider).toHaveBeenCalledWith('premier')
+    expect(syncTrackingProvider).not.toHaveBeenCalledWith('samsara')
   })
 })

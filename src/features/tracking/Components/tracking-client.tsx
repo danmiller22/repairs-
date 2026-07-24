@@ -58,6 +58,9 @@ import type { TrackingAsset, TrackingConnection } from '../types'
 import { TrackingMap } from './tracking-map-dynamic'
 
 type ConfigurableProvider = 'samsara' | 'xtralease' | 'premier'
+type SyncTarget = ConfigurableProvider | 'trailers'
+
+const AUTO_SYNC_INTERVAL_MS = 30 * 60 * 1000
 
 const statusStyles: Record<string, string> = {
   moving: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-500',
@@ -107,8 +110,8 @@ export function TrackingClient({
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<TrackingAsset | null>(null)
   const [configuring, setConfiguring] = useState<ConfigurableProvider | null>(null)
-  const [syncing, setSyncing] = useState<ConfigurableProvider | null>(null)
-  const autoSyncAttempted = useRef(false)
+  const [syncing, setSyncing] = useState<SyncTarget | null>(null)
+  const autoSyncRunning = useRef(false)
   const [isPending, startTransition] = useTransition()
 
   const filteredAssets = useMemo(() => {
@@ -127,6 +130,13 @@ export function TrackingClient({
   const located = assets.filter(
     (asset) => asset.trackingLatitude !== null && asset.trackingLongitude !== null
   ).length
+  const trailerProviders = connections.filter(
+    (connection) =>
+      (connection.id === 'xtralease' || connection.id === 'premier') &&
+      connection.available &&
+      connection.configured &&
+      !connection.error
+  )
 
   const saveLocation = (formData: FormData) => {
     if (!editing) return
@@ -171,6 +181,44 @@ export function TrackingClient({
     })
   }
 
+  const syncTrailers = () => {
+    if (trailerProviders.length === 0) {
+      toast.error('Connect XTRA Lease or Premier Trailer first')
+      return
+    }
+
+    setSyncing('trailers')
+    startTransition(async () => {
+      let syncedProviders = 0
+      let skippedProviders = 0
+      let syncedAssets = 0
+      const errors: string[] = []
+
+      for (const connection of trailerProviders) {
+        const result = await syncTrackingProvider(connection.id)
+        if (result.success && result.data) {
+          if (result.data.skipped) skippedProviders += 1
+          else {
+            syncedProviders += 1
+            syncedAssets += result.data.assetCount
+          }
+        } else {
+          errors.push(`${connection.name}: ${result.error || 'sync failed'}`)
+        }
+      }
+
+      if (syncedProviders > 0) {
+        toast.success(`Trailers synced: ${syncedAssets} units`)
+      } else if (skippedProviders > 0 && errors.length === 0) {
+        toast.success('Trailer locations are already current')
+      }
+      if (errors.length > 0) toast.error(errors.join(' · '))
+
+      router.refresh()
+      setSyncing(null)
+    })
+  }
+
   const saveConnection = (formData: FormData) => {
     if (!configuring) return
     const provider = configuring
@@ -206,21 +254,35 @@ export function TrackingClient({
   }
 
   useEffect(() => {
-    if (autoSyncAttempted.current) return
-    const staleConnection = connections.find((connection) => {
-      if (!connection.available || !connection.configured || connection.error) return false
-      if (!connection.lastSyncedAt) return true
-      return Date.now() - new Date(connection.lastSyncedAt).getTime() >= 30 * 60 * 1000
-    })
-    if (!staleConnection) return
+    const syncStaleConnections = () => {
+      if (autoSyncRunning.current) return
 
-    autoSyncAttempted.current = true
-    const timeout = window.setTimeout(
-      () => syncProvider(staleConnection.id as ConfigurableProvider),
-      400
-    )
-    return () => window.clearTimeout(timeout)
-  }, [connections])
+      const staleConnections = connections.filter((connection) => {
+        if (!connection.available || !connection.configured || connection.error) return false
+        if (!connection.lastSyncedAt) return true
+        return Date.now() - new Date(connection.lastSyncedAt).getTime() >= AUTO_SYNC_INTERVAL_MS
+      })
+      if (staleConnections.length === 0) return
+
+      autoSyncRunning.current = true
+      startTransition(async () => {
+        await Promise.all(
+          staleConnections.map((connection) =>
+            syncTrackingProvider(connection.id as ConfigurableProvider)
+          )
+        )
+        autoSyncRunning.current = false
+        router.refresh()
+      })
+    }
+
+    const initialSync = window.setTimeout(syncStaleConnections, 400)
+    const recurringSync = window.setInterval(syncStaleConnections, AUTO_SYNC_INTERVAL_MS)
+    return () => {
+      window.clearTimeout(initialSync)
+      window.clearInterval(recurringSync)
+    }
+  }, [connections, router])
 
   return (
     <div className="space-y-4">
@@ -236,12 +298,32 @@ export function TrackingClient({
             Trucks and trailers in one live operational view.
           </p>
         </div>
-        <Button asChild className="w-full sm:w-auto">
-          <Link href="/vehicles?create=true">
-            <Plus className="mr-1.5 h-4 w-4" />
-            Add Unit
-          </Link>
-        </Button>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <Button
+            variant="outline"
+            className="w-full sm:w-auto"
+            onClick={syncTrailers}
+            disabled={syncing !== null || trailerProviders.length === 0}
+            title={
+              trailerProviders.length === 0
+                ? 'Connect XTRA Lease or Premier Trailer first'
+                : 'Refresh trailer locations now'
+            }
+          >
+            {syncing === 'trailers' ? (
+              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="mr-1.5 h-4 w-4" />
+            )}
+            Sync trailers
+          </Button>
+          <Button asChild className="w-full sm:w-auto">
+            <Link href="/vehicles?create=true">
+              <Plus className="mr-1.5 h-4 w-4" />
+              Add Unit
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
@@ -344,7 +426,7 @@ export function TrackingClient({
                       <Button
                         size="sm"
                         className="h-7 flex-1 text-xs"
-                        disabled={syncing === provider.id}
+                        disabled={syncing !== null}
                         onClick={() => syncProvider(provider.id as ConfigurableProvider)}
                       >
                         {syncing === provider.id ? (
@@ -360,8 +442,8 @@ export function TrackingClient({
               </div>
             ))}
             <p className="text-xs text-muted-foreground">
-              Connected providers refresh automatically when Tracking opens and data is over 30
-              minutes old.
+              Connected providers refresh automatically when Tracking opens and every 30 minutes
+              while this page stays open.
             </p>
           </CardContent>
         </Card>

@@ -1,6 +1,7 @@
 'use client'
 
 import { Fragment } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTranslations } from 'next-intl'
@@ -132,6 +133,14 @@ export function PageHeader() {
     <>
       <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 bg-background px-3 sm:h-16 sm:px-4">
         <SidebarTrigger className="-ml-1" />
+        <Image
+          src="/us-team-logo.png"
+          alt="US Team Fleet"
+          width={28}
+          height={28}
+          className="size-7 shrink-0 object-contain md:hidden"
+          priority
+        />
         <Separator
           orientation="vertical"
           className="mr-1 data-[orientation=vertical]:h-4 sm:mr-2"

@@ -30,7 +30,7 @@ export default function AboutPage() {
           <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
           <div className="relative max-w-3xl">
             <Image
-              src="/torqvoice_app_logo.png"
+              src="/us-team-logo.png"
               alt="US Team Fleet"
               width={64}
               height={64}

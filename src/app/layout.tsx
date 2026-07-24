@@ -25,6 +25,10 @@ export const metadata: Metadata = {
     default: 'US Team Fleet',
     template: '%s | US Team Fleet',
   },
+  icons: {
+    icon: [{ url: '/us-team-logo.png', type: 'image/png' }],
+    apple: [{ url: '/us-team-logo.png', type: 'image/png' }],
+  },
   description:
     'Self-hosted workshop management platform for automotive service businesses. Manage work orders, invoices, customers, inventory, and vehicle service history.',
   keywords: [
@@ -48,19 +52,19 @@ export const metadata: Metadata = {
       'Self-hosted workshop management platform for automotive service businesses. Manage work orders, invoices, customers, inventory, and vehicle service history.',
     images: [
       {
-        url: '/images/torqvoice_opengraph.png',
-        width: 1200,
-        height: 630,
+        url: '/us-team-logo.png',
+        width: 512,
+        height: 512,
         alt: 'US Team Fleet',
       },
     ],
   },
   twitter: {
-    card: 'summary_large_image',
+    card: 'summary',
     title: 'US Team Fleet',
     description:
       'Self-hosted workshop management platform for automotive service businesses. Manage work orders, invoices, customers, inventory, and vehicle service history.',
-    images: ['/images/torqvoice_opengraph.png'],
+    images: ['/us-team-logo.png'],
   },
 }
 
@@ -77,7 +81,7 @@ export default async function RootLayout({
       <head>
         <meta name="google" content="notranslate" />
         <meta name="theme-color" content="#09090b" />
-        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+        <link rel="apple-touch-icon" href="/us-team-logo.png" />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var p=location.pathname;if(p.indexOf('/share/')===0||p.indexOf('/portal')===0){document.documentElement.classList.add('light');return}var t=localStorage.getItem('torqvoice-theme')||'dark';if(t==='system'){t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'}document.documentElement.classList.add(t)}catch(e){}})()`,

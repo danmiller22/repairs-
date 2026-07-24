@@ -100,27 +100,11 @@ export async function getVehiclesPaginated(params: {
       }
 
       if (params.search) {
-        const words = params.search.trim().split(/\s+/).filter(Boolean)
-        const fieldMatch = (word: string) => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const conditions: any[] = [
-            { trackingExternalId: { contains: word, mode: 'insensitive' } },
-            { make: { contains: word, mode: 'insensitive' } },
-            { model: { contains: word, mode: 'insensitive' } },
-            { licensePlate: { contains: word, mode: 'insensitive' } },
-            { vin: { contains: word, mode: 'insensitive' } },
-            { customer: { name: { contains: word, mode: 'insensitive' } } },
-          ]
-          if (!isNaN(Number(word))) {
-            conditions.push({ year: Number(word) })
-          }
-          return conditions
-        }
-        if (words.length > 1) {
-          where.AND = words.map((word: string) => ({ OR: fieldMatch(word) }))
-        } else {
-          where.OR = fieldMatch(words[0])
-        }
+        const unitNumber = params.search.trim()
+        where.OR = [
+          { trackingExternalId: { contains: unitNumber, mode: 'insensitive' } },
+          { licensePlate: { contains: unitNumber, mode: 'insensitive' } },
+        ]
       }
 
       const [vehicles, total, archivedCount] = await Promise.all([

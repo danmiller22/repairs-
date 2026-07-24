@@ -221,7 +221,7 @@ export function VehiclesClient({
           <div className="relative w-full min-w-0 flex-1 sm:max-w-sm">
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search unit number, make, model or VIN…"
+              placeholder="Search unit number…"
               defaultValue={search}
               onChange={(event) => handleSearchChange(event.target.value)}
               className="pl-9"

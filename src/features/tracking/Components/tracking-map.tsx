@@ -58,7 +58,7 @@ export default function TrackingMapInner({ assets }: { assets: TrackingAsset[] }
   )
 
   return (
-    <div className="relative h-full min-h-[360px] overflow-hidden">
+    <div className="relative z-0 isolate h-full min-h-[360px] overflow-hidden">
       <MapContainer
         center={[41.8781, -87.6298]}
         zoom={9}

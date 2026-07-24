@@ -104,6 +104,7 @@ export async function getVehiclesPaginated(params: {
         const fieldMatch = (word: string) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const conditions: any[] = [
+            { trackingExternalId: { contains: word, mode: 'insensitive' } },
             { make: { contains: word, mode: 'insensitive' } },
             { model: { contains: word, mode: 'insensitive' } },
             { licensePlate: { contains: word, mode: 'insensitive' } },

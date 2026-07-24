@@ -228,7 +228,7 @@ export default function BillingClient({
 
       {/* Status Tabs and Search */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+        <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
           {STATUS_TABS.map((tab) => (
             <Button
               key={tab.value}

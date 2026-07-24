@@ -230,7 +230,7 @@ export function WorkOrdersClient({
   return (
     <div className="space-y-4">
       {/* Status tabs */}
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+      <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
         {statusTabKeys.map((key) => {
           const isActive = statusFilter === key
           const count = key === 'all' || key === 'active' ? undefined : data.statusCounts[key] || 0

@@ -150,6 +150,15 @@ describe('TrackingClient', () => {
     })
   })
 
+  it('opens XTRA Lease setup when trailer tracking is not connected', () => {
+    render(<TrackingClient assets={assets} connections={[]} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sync trailers' }))
+
+    expect(screen.getByRole('dialog', { name: 'Connect tracking provider' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Provider' })).toHaveTextContent('XTRA Lease')
+  })
+
   it('automatically syncs every stale configured provider', async () => {
     vi.useFakeTimers()
     render(<TrackingClient assets={assets} connections={connections} />)

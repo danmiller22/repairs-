@@ -134,11 +134,23 @@ export async function getTrackingConnections() {
       const providerIds: TrackingProviderId[] = ['samsara', 'xtralease', 'premier']
       const configured = await Promise.all(
         providerIds.map(async (provider) => {
-          const [connection, metadata] = await Promise.all([
-            getTrackingCredentials(organizationId, provider),
-            getTrackingSyncMetadata(organizationId, provider),
-          ])
-          return { provider, connection, metadata }
+          const metadata = await getTrackingSyncMetadata(organizationId, provider)
+          try {
+            const connection = await getTrackingCredentials(organizationId, provider)
+            return { provider, connection, metadata }
+          } catch (error) {
+            return {
+              provider,
+              connection: { credentials: null, source: null },
+              metadata: {
+                ...metadata,
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : 'Stored tracking credentials are unavailable',
+              },
+            }
+          }
         })
       )
 

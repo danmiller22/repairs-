@@ -183,7 +183,8 @@ export function TrackingClient({
 
   const syncTrailers = () => {
     if (trailerProviders.length === 0) {
-      toast.error('Connect XTRA Lease or Premier Trailer first')
+      toast.info('Connect XTRA Lease to enable trailer synchronization')
+      setConfiguring('xtralease')
       return
     }
 
@@ -303,7 +304,7 @@ export function TrackingClient({
             variant="outline"
             className="w-full sm:w-auto"
             onClick={syncTrailers}
-            disabled={syncing !== null || trailerProviders.length === 0}
+            disabled={syncing !== null}
             title={
               trailerProviders.length === 0
                 ? 'Connect XTRA Lease or Premier Trailer first'

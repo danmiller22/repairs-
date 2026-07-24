@@ -193,7 +193,11 @@ export function AppSidebar({
                 >
                   <div className="flex aspect-square size-12 items-center justify-center overflow-hidden rounded-lg">
                     <Image
-                      src={companyLogo || '/us-team-logo.png'}
+                      src={
+                        companyLogo && !companyLogo.endsWith('/torqvoice_app_logo.png')
+                          ? companyLogo
+                          : '/us-team-logo.png'
+                      }
                       alt={activeOrg?.name ?? 'Company'}
                       width={38}
                       height={38}

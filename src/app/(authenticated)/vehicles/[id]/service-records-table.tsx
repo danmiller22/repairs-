@@ -88,6 +88,7 @@ interface ServiceRecordsTableProps {
   type: string;
   currencyCode?: string;
   vehicleMileage?: number;
+  showMileage?: boolean;
 }
 
 export function ServiceRecordsTable({
@@ -101,6 +102,7 @@ export function ServiceRecordsTable({
   type,
   currencyCode = "USD",
   vehicleMileage,
+  showMileage = true,
 }: ServiceRecordsTableProps) {
   const formatCurrency = useFormatCurrency()
   const router = useRouter();
@@ -246,7 +248,9 @@ export function ServiceRecordsTable({
               <TableHead>{t("table.title")}</TableHead>
               <TableHead className="w-[100px]">{t("table.type")}</TableHead>
               <TableHead className="w-[100px]">{t("table.status")}</TableHead>
-              <TableHead className="w-[100px] text-right">{serviceType === 'marine' ? t("table.mileageMarine") : t("table.mileage")}</TableHead>
+              {showMileage && (
+                <TableHead className="w-[100px] text-right">{serviceType === 'marine' ? t("table.mileageMarine") : t("table.mileage")}</TableHead>
+              )}
               <TableHead className="hidden w-[120px] sm:table-cell">{t("table.technician")}</TableHead>
               <TableHead className="w-[50px] text-center">{t("table.files")}</TableHead>
               <TableHead className="w-[100px] text-right">{t("table.total")}</TableHead>
@@ -256,7 +260,7 @@ export function ServiceRecordsTable({
           <TableBody>
             {records.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="h-32 text-center text-muted-foreground">
+                <TableCell colSpan={showMileage ? 9 : 8} className="h-32 text-center text-muted-foreground">
                   {search || type !== "all"
                     ? t("emptyFiltered")
                     : t("empty")}
@@ -302,9 +306,11 @@ export function ServiceRecordsTable({
                         {record.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right font-mono text-xs">
-                      {record.mileage ? record.mileage.toLocaleString() : "-"}
-                    </TableCell>
+                    {showMileage && (
+                      <TableCell className="text-right font-mono text-xs">
+                        {record.mileage ? record.mileage.toLocaleString() : "-"}
+                      </TableCell>
+                    )}
                     <TableCell className="hidden text-sm sm:table-cell">
                       {record.techName || "-"}
                     </TableCell>

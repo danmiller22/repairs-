@@ -1132,6 +1132,7 @@ export function VehicleDetailClient({
             type={serviceRecordType}
             currencyCode={currencyCode}
             vehicleMileage={vehicle.mileage}
+            showMileage={vehicle.assetType !== 'trailer'}
           />
         </TabsContent>
 

@@ -1,12 +1,12 @@
-"use client";
+'use client'
 
-import { useState, useCallback, useTransition } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { toast } from "sonner";
-import { useFormatDate } from "@/lib/use-format-date";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useState, useCallback, useTransition } from 'react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { toast } from 'sonner'
+import { useFormatDate } from '@/lib/use-format-date'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -14,117 +14,112 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { DataTablePagination } from "@/components/data-table-pagination";
-import { statusColors } from "@/lib/table-utils";
-import { updateServiceStatus } from "@/features/vehicles/Actions/serviceActions";
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  ChevronDown,
-  Loader2,
-  Plus,
-  Search,
-} from "lucide-react";
+} from '@/components/ui/dropdown-menu'
+import { DataTablePagination } from '@/components/data-table-pagination'
+import { statusColors } from '@/lib/table-utils'
+import { updateServiceStatus } from '@/features/vehicles/Actions/serviceActions'
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Loader2, Plus, Search } from 'lucide-react'
 import { useFormatCurrency } from '@/components/currency-settings-context'
-import { VehiclePickerDialog } from "@/components/vehicle-picker-dialog";
-import { NotifyCustomerDialog } from "@/components/notify-customer-dialog";
-import { useTranslations } from "next-intl";
-import { getSmsTemplates } from "@/features/sms/Actions/smsActions";
-import { SETTING_KEYS } from "@/features/settings/Schema/settingsSchema";
-import { SMS_TEMPLATE_DEFAULTS, interpolateSmsTemplate } from "@/lib/sms-templates";
+import { VehiclePickerDialog } from '@/components/vehicle-picker-dialog'
+import { NotifyCustomerDialog } from '@/components/notify-customer-dialog'
+import { useTranslations } from 'next-intl'
+import { getSmsTemplates } from '@/features/sms/Actions/smsActions'
+import { SETTING_KEYS } from '@/features/settings/Schema/settingsSchema'
+import { SMS_TEMPLATE_DEFAULTS, interpolateSmsTemplate } from '@/lib/sms-templates'
 
 interface WorkOrder {
-  id: string;
-  title: string;
-  type: string;
-  status: string;
-  totalAmount: number;
-  cost: number;
-  serviceDate: Date;
-  startDateTime: Date | null;
-  techName: string | null;
-  invoiceNumber: string | null;
+  id: string
+  title: string
+  type: string
+  status: string
+  totalAmount: number
+  cost: number
+  serviceDate: Date
+  startDateTime: Date | null
+  techName: string | null
+  invoiceNumber: string | null
   vehicle: {
-    id: string;
-    make: string;
-    model: string;
-    year: number;
-    licensePlate: string | null;
-    customer: { id: string; name: string; email: string | null; phone: string | null } | null;
-  };
+    id: string
+    make: string
+    model: string
+    year: number
+    licensePlate: string | null
+    customer: { id: string; name: string; email: string | null; phone: string | null } | null
+  }
 }
 
 interface VehicleOption {
-  id: string;
-  make: string;
-  model: string;
-  year: number;
-  licensePlate: string | null;
-  customer: { id: string; name: string; company: string | null } | null;
+  id: string
+  make: string
+  model: string
+  year: number
+  licensePlate: string | null
+  customer: { id: string; name: string; company: string | null } | null
 }
 
 interface CustomerOption {
-  id: string;
-  name: string;
-  company: string | null;
+  id: string
+  name: string
+  company: string | null
 }
 
 interface PaginatedData {
-  records: WorkOrder[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-  statusCounts: Record<string, number>;
+  records: WorkOrder[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+  statusCounts: Record<string, number>
 }
 
-const statusTabKeys = ["all", "active", "pending", "in-progress", "waiting-parts", "completed"] as const;
+const statusTabKeys = [
+  'all',
+  'active',
+  'pending',
+  'in-progress',
+  'waiting-parts',
+  'completed',
+] as const
 
 const statusTabI18nMap: Record<string, string> = {
-  "all": "all",
-  "active": "active",
-  "pending": "pending",
-  "in-progress": "inProgress",
-  "waiting-parts": "waitingParts",
-  "completed": "completed",
-};
+  all: 'all',
+  active: 'active',
+  pending: 'pending',
+  'in-progress': 'inProgress',
+  'waiting-parts': 'waitingParts',
+  completed: 'completed',
+}
 
 const statusTemplateKeys: Record<string, string> = {
-  "in-progress": SETTING_KEYS.SMS_TEMPLATE_STATUS_IN_PROGRESS,
-  "waiting-parts": SETTING_KEYS.SMS_TEMPLATE_STATUS_WAITING_PARTS,
-  "completed": SETTING_KEYS.SMS_TEMPLATE_STATUS_COMPLETED,
-};
+  'in-progress': SETTING_KEYS.SMS_TEMPLATE_STATUS_IN_PROGRESS,
+  'waiting-parts': SETTING_KEYS.SMS_TEMPLATE_STATUS_WAITING_PARTS,
+  completed: SETTING_KEYS.SMS_TEMPLATE_STATUS_COMPLETED,
+}
 
 const statusTransitions: Record<string, { actionKey: string; target: string }[]> = {
-  pending: [
-    { actionKey: "startWork", target: "in-progress" },
+  pending: [{ actionKey: 'startWork', target: 'in-progress' }],
+  'in-progress': [
+    { actionKey: 'waitingParts', target: 'waiting-parts' },
+    { actionKey: 'complete', target: 'completed' },
   ],
-  "in-progress": [
-    { actionKey: "waitingParts", target: "waiting-parts" },
-    { actionKey: "complete", target: "completed" },
+  'waiting-parts': [
+    { actionKey: 'resumeWork', target: 'in-progress' },
+    { actionKey: 'complete', target: 'completed' },
   ],
-  "waiting-parts": [
-    { actionKey: "resumeWork", target: "in-progress" },
-    { actionKey: "complete", target: "completed" },
-  ],
-  completed: [
-    { actionKey: "reopen", target: "pending" },
-  ],
-};
+  completed: [{ actionKey: 'reopen', target: 'pending' }],
+}
 
 export function WorkOrdersClient({
   data,
   vehicles = [],
   customers = [],
-  currencyCode = "USD",
+  currencyCode = 'USD',
   search,
   statusFilter,
   sortBy,
@@ -132,113 +127,119 @@ export function WorkOrdersClient({
   smsEnabled = false,
   emailEnabled = false,
 }: {
-  data: PaginatedData;
-  vehicles?: VehicleOption[];
-  customers?: CustomerOption[];
-  currencyCode?: string;
-  search: string;
-  statusFilter: string;
-  sortBy: string;
-  sortOrder: "asc" | "desc";
-  smsEnabled?: boolean;
-  emailEnabled?: boolean;
+  data: PaginatedData
+  vehicles?: VehicleOption[]
+  customers?: CustomerOption[]
+  currencyCode?: string
+  search: string
+  statusFilter: string
+  sortBy: string
+  sortOrder: 'asc' | 'desc'
+  smsEnabled?: boolean
+  emailEnabled?: boolean
 }) {
-  const formatCurrency = useFormatCurrency();
-  const router = useRouter();
-  const { formatDate } = useFormatDate();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const [isPending, startTransition] = useTransition();
-  const t = useTranslations("workOrders.list");
-  const [searchInput, setSearchInput] = useState(search);
-  const [navigatingId, setNavigatingId] = useState<string | null>(null);
-  const [showPicker, setShowPicker] = useState(false);
-  const [showNotifyDialog, setShowNotifyDialog] = useState(false);
-  const [notifyCustomer, setNotifyCustomer] = useState<{ id: string; name: string; email: string | null; phone: string | null } | null>(null);
-  const [notifyMessage, setNotifyMessage] = useState("");
-  const [notifyStatus, setNotifyStatus] = useState("");
+  const formatCurrency = useFormatCurrency()
+  const router = useRouter()
+  const { formatDate } = useFormatDate()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [isPending, startTransition] = useTransition()
+  const t = useTranslations('workOrders.list')
+  const [searchInput, setSearchInput] = useState(search)
+  const [navigatingId, setNavigatingId] = useState<string | null>(null)
+  const [showPicker, setShowPicker] = useState(false)
+  const [showNotifyDialog, setShowNotifyDialog] = useState(false)
+  const [notifyCustomer, setNotifyCustomer] = useState<{
+    id: string
+    name: string
+    email: string | null
+    phone: string | null
+  } | null>(null)
+  const [notifyMessage, setNotifyMessage] = useState('')
+  const [notifyStatus, setNotifyStatus] = useState('')
 
   const navigate = useCallback(
     (params: Record<string, string | number | undefined>) => {
-      const newParams = new URLSearchParams(searchParams.toString());
+      const newParams = new URLSearchParams(searchParams.toString())
       for (const [key, value] of Object.entries(params)) {
-        if (value === undefined || value === "") {
-          newParams.delete(key);
+        if (value === undefined || value === '') {
+          newParams.delete(key)
         } else {
-          newParams.set(key, String(value));
+          newParams.set(key, String(value))
         }
       }
-      if (!("page" in params)) {
-        newParams.delete("page");
+      if (!('page' in params)) {
+        newParams.delete('page')
       }
       startTransition(() => {
-        router.push(`${pathname}?${newParams.toString()}`);
-      });
+        router.push(`${pathname}?${newParams.toString()}`)
+      })
     },
     [router, pathname, searchParams]
-  );
+  )
 
   const handleSort = useCallback(
     (column: string) => {
-      const newOrder = sortBy === column && sortOrder === "asc" ? "desc" : "asc";
-      navigate({ sortBy: column, sortOrder: newOrder });
+      const newOrder = sortBy === column && sortOrder === 'asc' ? 'desc' : 'asc'
+      navigate({ sortBy: column, sortOrder: newOrder })
     },
     [navigate, sortBy, sortOrder]
-  );
+  )
 
   const SortIcon = ({ column }: { column: string }) => {
-    if (sortBy !== column) return <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />;
-    return sortOrder === "asc"
-      ? <ArrowUp className="ml-1 h-3 w-3" />
-      : <ArrowDown className="ml-1 h-3 w-3" />;
-  };
+    if (sortBy !== column) return <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
+    return sortOrder === 'asc' ? (
+      <ArrowUp className="ml-1 h-3 w-3" />
+    ) : (
+      <ArrowDown className="ml-1 h-3 w-3" />
+    )
+  }
 
   const handleSearch = useCallback(
     (e: React.FormEvent) => {
-      e.preventDefault();
-      navigate({ search: searchInput || undefined });
+      e.preventDefault()
+      navigate({ search: searchInput || undefined })
     },
     [navigate, searchInput]
-  );
+  )
 
   const handleStatusChange = async (workOrder: WorkOrder, newStatus: string) => {
-    await updateServiceStatus(workOrder.id, newStatus);
-    toast.success(t("statusUpdated"));
-    router.refresh();
+    await updateServiceStatus(workOrder.id, newStatus)
+    toast.success(t('statusUpdated'))
+    router.refresh()
 
-    const templateKey = statusTemplateKeys[newStatus];
+    const templateKey = statusTemplateKeys[newStatus]
     if (workOrder.vehicle.customer && templateKey) {
-      const tplResult = await getSmsTemplates();
-      const tplData = tplResult.success && tplResult.data ? tplResult.data : null;
-      const tpl = tplData?.templates[templateKey] || SMS_TEMPLATE_DEFAULTS[templateKey] || "";
-      const vehicle = `${workOrder.vehicle.year} ${workOrder.vehicle.make} ${workOrder.vehicle.model}`;
+      const tplResult = await getSmsTemplates()
+      const tplData = tplResult.success && tplResult.data ? tplResult.data : null
+      const tpl = tplData?.templates[templateKey] || SMS_TEMPLATE_DEFAULTS[templateKey] || ''
+      const vehicle = `${workOrder.vehicle.year} ${workOrder.vehicle.make} ${workOrder.vehicle.model}`
       const message = interpolateSmsTemplate(tpl, {
         customer_name: workOrder.vehicle.customer.name,
         vehicle,
-        company_name: tplData?.companyName || "",
-        current_user: tplData?.currentUser || "",
-      });
-      setNotifyCustomer(workOrder.vehicle.customer);
-      setNotifyMessage(message);
-      setNotifyStatus(newStatus);
-      setShowNotifyDialog(true);
+        company_name: tplData?.companyName || '',
+        current_user: tplData?.currentUser || '',
+      })
+      setNotifyCustomer(workOrder.vehicle.customer)
+      setNotifyMessage(message)
+      setNotifyStatus(newStatus)
+      setShowNotifyDialog(true)
     }
-  };
+  }
 
   return (
     <div className="space-y-4">
       {/* Status tabs */}
-      <div className="flex flex-wrap gap-2">
+      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
         {statusTabKeys.map((key) => {
-          const isActive = statusFilter === key;
-          const count = key === "all" || key === "active"
-            ? undefined
-            : data.statusCounts[key] || 0;
+          const isActive = statusFilter === key
+          const count = key === 'all' || key === 'active' ? undefined : data.statusCounts[key] || 0
           return (
             <Button
               key={key}
-              variant={isActive ? "default" : "outline"}
+              variant={isActive ? 'default' : 'outline'}
               size="sm"
+              className="shrink-0"
               onClick={() => navigate({ status: key || undefined })}
             >
               {t(`statusTabs.${statusTabI18nMap[key]}`)}
@@ -248,17 +249,17 @@ export function WorkOrdersClient({
                 </Badge>
               )}
             </Button>
-          );
+          )
         })}
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex flex-1 items-center gap-2">
-          <form onSubmit={handleSearch} className="relative flex-1 sm:max-w-sm">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <form onSubmit={handleSearch} className="relative min-w-0 flex-1 sm:max-w-sm">
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder={t("searchPlaceholder")}
+              placeholder={t('searchPlaceholder')}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="pl-9"
@@ -266,47 +267,167 @@ export function WorkOrdersClient({
           </form>
           {isPending && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
         </div>
-        <Button size="sm" onClick={() => setShowPicker(true)}>
+        <Button className="w-full sm:w-auto" size="sm" onClick={() => setShowPicker(true)}>
           <Plus className="mr-1 h-3.5 w-3.5" />
-          {t("newWorkOrder")}
+          {t('newWorkOrder')}
         </Button>
       </div>
 
-      {/* Table */}
-      <div className="rounded-lg border">
+      {/* Mobile cards */}
+      <div className="space-y-3 md:hidden">
+        {data.records.length === 0 ? (
+          <div className="rounded-lg border px-4 py-12 text-center text-sm text-muted-foreground">
+            {t('empty')}
+          </div>
+        ) : (
+          data.records.map((r) => {
+            const displayTotal = r.totalAmount > 0 ? r.totalAmount : r.cost
+            const transitions = statusTransitions[r.status] || []
+            return (
+              <div
+                key={r.id}
+                className={`rounded-xl border bg-card p-3 shadow-sm transition-opacity ${
+                  navigatingId === r.id ? 'opacity-50' : ''
+                }`}
+                onClick={() => {
+                  setNavigatingId(r.id)
+                  router.push(`/vehicles/${r.vehicle.id}/service/${r.id}`)
+                }}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold">{r.title}</p>
+                    <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                      {r.vehicle.licensePlate ||
+                        `${r.vehicle.year} ${r.vehicle.make} ${r.vehicle.model}`}
+                    </p>
+                  </div>
+                  {navigatingId === r.id ? (
+                    <Loader2 className="mt-2 h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
+                  ) : transitions.length > 0 ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-10 w-10 shrink-0"
+                          aria-label={t('changeStatus')}
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {transitions.map((tr) => (
+                          <DropdownMenuItem
+                            key={tr.target}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleStatusChange(r, tr.target)
+                            }}
+                          >
+                            {t(`statusActions.${tr.actionKey}`)}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : null}
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Badge variant="outline" className={`text-xs ${statusColors[r.status] || ''}`}>
+                    {r.status}
+                  </Badge>
+                  {r.invoiceNumber && (
+                    <span className="font-mono text-xs text-muted-foreground">
+                      #{r.invoiceNumber}
+                    </span>
+                  )}
+                  {r.vehicle.customer?.name && (
+                    <span className="truncate text-xs text-muted-foreground">
+                      {r.vehicle.customer.name}
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-3 flex items-center justify-between border-t pt-3 text-sm">
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {formatDate(new Date(r.startDateTime ?? r.serviceDate))}
+                  </span>
+                  <span className="font-semibold">
+                    {formatCurrency(displayTotal, currencyCode)}
+                  </span>
+                </div>
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden overflow-x-auto rounded-lg border md:block">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="hidden sm:table-cell w-[100px]">
-                <button type="button" className="flex items-center hover:text-foreground" onClick={() => handleSort("invoiceNumber")}>
-                  {t("table.invoice")}<SortIcon column="invoiceNumber" />
+                <button
+                  type="button"
+                  className="flex items-center hover:text-foreground"
+                  onClick={() => handleSort('invoiceNumber')}
+                >
+                  {t('table.invoice')}
+                  <SortIcon column="invoiceNumber" />
                 </button>
               </TableHead>
-              <TableHead>{t("table.vehicle")}</TableHead>
-              <TableHead className="hidden md:table-cell">{t("table.customer")}</TableHead>
+              <TableHead>{t('table.vehicle')}</TableHead>
+              <TableHead className="hidden md:table-cell">{t('table.customer')}</TableHead>
               <TableHead>
-                <button type="button" className="flex items-center hover:text-foreground" onClick={() => handleSort("title")}>
-                  {t("table.title")}<SortIcon column="title" />
+                <button
+                  type="button"
+                  className="flex items-center hover:text-foreground"
+                  onClick={() => handleSort('title')}
+                >
+                  {t('table.title')}
+                  <SortIcon column="title" />
                 </button>
               </TableHead>
               <TableHead className="w-[110px]">
-                <button type="button" className="flex items-center hover:text-foreground" onClick={() => handleSort("status")}>
-                  {t("table.status")}<SortIcon column="status" />
+                <button
+                  type="button"
+                  className="flex items-center hover:text-foreground"
+                  onClick={() => handleSort('status')}
+                >
+                  {t('table.status')}
+                  <SortIcon column="status" />
                 </button>
               </TableHead>
               <TableHead className="hidden lg:table-cell">
-                <button type="button" className="flex items-center hover:text-foreground" onClick={() => handleSort("techName")}>
-                  {t("table.tech")}<SortIcon column="techName" />
+                <button
+                  type="button"
+                  className="flex items-center hover:text-foreground"
+                  onClick={() => handleSort('techName')}
+                >
+                  {t('table.tech')}
+                  <SortIcon column="techName" />
                 </button>
               </TableHead>
               <TableHead className="w-[90px]">
-                <button type="button" className="flex items-center hover:text-foreground" onClick={() => handleSort("serviceDate")}>
-                  {t("table.date")}<SortIcon column="serviceDate" />
+                <button
+                  type="button"
+                  className="flex items-center hover:text-foreground"
+                  onClick={() => handleSort('serviceDate')}
+                >
+                  {t('table.date')}
+                  <SortIcon column="serviceDate" />
                 </button>
               </TableHead>
               <TableHead className="w-[90px] text-right">
-                <button type="button" className="flex items-center justify-end hover:text-foreground ml-auto" onClick={() => handleSort("totalAmount")}>
-                  {t("table.total")}<SortIcon column="totalAmount" />
+                <button
+                  type="button"
+                  className="flex items-center justify-end hover:text-foreground ml-auto"
+                  onClick={() => handleSort('totalAmount')}
+                >
+                  {t('table.total')}
+                  <SortIcon column="totalAmount" />
                 </button>
               </TableHead>
               <TableHead className="w-[50px]" />
@@ -316,29 +437,31 @@ export function WorkOrdersClient({
             {data.records.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="h-32 text-center text-muted-foreground">
-                  {t("empty")}
+                  {t('empty')}
                 </TableCell>
               </TableRow>
             ) : (
               data.records.map((r) => {
-                const displayTotal = r.totalAmount > 0 ? r.totalAmount : r.cost;
-                const transitions = statusTransitions[r.status] || [];
+                const displayTotal = r.totalAmount > 0 ? r.totalAmount : r.cost
+                const transitions = statusTransitions[r.status] || []
                 return (
                   <TableRow
                     key={r.id}
-                    className={`cursor-pointer transition-opacity ${navigatingId === r.id ? "opacity-50" : ""}`}
+                    className={`cursor-pointer transition-opacity ${navigatingId === r.id ? 'opacity-50' : ''}`}
                     onClick={() => {
-                      setNavigatingId(r.id);
-                      router.push(`/vehicles/${r.vehicle.id}/service/${r.id}`);
+                      setNavigatingId(r.id)
+                      router.push(`/vehicles/${r.vehicle.id}/service/${r.id}`)
                     }}
                   >
                     <TableCell className="hidden sm:table-cell font-mono text-xs text-muted-foreground">
-                      {r.invoiceNumber || "-"}
+                      {r.invoiceNumber || '-'}
                     </TableCell>
                     <TableCell>
                       <div>
                         {r.vehicle.licensePlate && (
-                          <span className="font-mono text-sm font-medium">{r.vehicle.licensePlate}</span>
+                          <span className="font-mono text-sm font-medium">
+                            {r.vehicle.licensePlate}
+                          </span>
                         )}
                         <p className="text-xs text-muted-foreground">
                           {r.vehicle.year} {r.vehicle.make} {r.vehicle.model}
@@ -346,18 +469,21 @@ export function WorkOrdersClient({
                       </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-muted-foreground">
-                      {r.vehicle.customer?.name || "-"}
+                      {r.vehicle.customer?.name || '-'}
                     </TableCell>
                     <TableCell>
                       <span className="font-medium">{r.title}</span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={`text-xs ${statusColors[r.status] || ""}`}>
+                      <Badge
+                        variant="outline"
+                        className={`text-xs ${statusColors[r.status] || ''}`}
+                      >
                         {r.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
-                      {r.techName || "-"}
+                      {r.techName || '-'}
                     </TableCell>
                     <TableCell className="font-mono text-xs">
                       {formatDate(new Date(r.startDateTime ?? r.serviceDate))}
@@ -371,7 +497,12 @@ export function WorkOrdersClient({
                       ) : transitions.length > 0 ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={t("changeStatus")}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              aria-label={t('changeStatus')}
+                            >
                               <ChevronDown className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -380,8 +511,8 @@ export function WorkOrdersClient({
                               <DropdownMenuItem
                                 key={tr.target}
                                 onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleStatusChange(r, tr.target);
+                                  e.stopPropagation()
+                                  handleStatusChange(r, tr.target)
                                 }}
                               >
                                 {t(`statusActions.${tr.actionKey}`)}
@@ -392,7 +523,7 @@ export function WorkOrdersClient({
                       ) : null}
                     </TableCell>
                   </TableRow>
-                );
+                )
               })
             )}
           </TableBody>
@@ -412,7 +543,7 @@ export function WorkOrdersClient({
         onOpenChange={setShowPicker}
         vehicles={vehicles}
         customers={customers}
-        title={t("selectVehicle")}
+        title={t('selectVehicle')}
       />
 
       {notifyCustomer && (
@@ -421,12 +552,12 @@ export function WorkOrdersClient({
           onOpenChange={setShowNotifyDialog}
           customer={notifyCustomer}
           defaultMessage={notifyMessage}
-          emailSubject={t("emailSubject", { status: notifyStatus })}
+          emailSubject={t('emailSubject', { status: notifyStatus })}
           smsEnabled={smsEnabled}
           emailEnabled={emailEnabled}
           relatedEntityType="work-order"
         />
       )}
     </div>
-  );
+  )
 }

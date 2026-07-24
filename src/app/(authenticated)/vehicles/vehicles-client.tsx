@@ -167,8 +167,8 @@ export function VehiclesClient({
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <div className="flex shrink-0 gap-1 rounded-lg border p-1">
+        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="grid w-full grid-cols-3 gap-1 rounded-lg border p-1 sm:w-auto sm:shrink-0">
             {[
               { value: 'all', label: 'All Units' },
               { value: 'truck', label: 'Trucks' },
@@ -178,7 +178,7 @@ export function VehiclesClient({
                 key={item.value}
                 type="button"
                 onClick={() => navigate({ type: item.value === 'all' ? undefined : item.value })}
-                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                className={`min-h-9 rounded-md px-2 py-1 text-xs font-medium transition-colors sm:px-3 ${
                   assetType === item.value
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:text-foreground'
@@ -188,7 +188,7 @@ export function VehiclesClient({
               </button>
             ))}
           </div>
-          <div className="relative min-w-0 flex-1 sm:max-w-sm">
+          <div className="relative w-full min-w-0 flex-1 sm:max-w-sm">
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search unit number, make, model or VIN…"
@@ -199,8 +199,8 @@ export function VehiclesClient({
           </div>
           {isPending && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <div className="flex items-center rounded-md border">
+        <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
+          <div className="hidden items-center rounded-md border sm:flex">
             <Button
               variant={view === 'table' ? 'secondary' : 'ghost'}
               size="icon"
@@ -229,7 +229,7 @@ export function VehiclesClient({
               <Grid3X3 className="h-4 w-4" />
             </Button>
           </div>
-          <Button size="sm" onClick={() => setShowForm(true)}>
+          <Button className="w-full sm:w-auto" size="sm" onClick={() => setShowForm(true)}>
             <Plus className="mr-1 h-3.5 w-3.5" />
             Add Unit
           </Button>
@@ -241,82 +241,146 @@ export function VehiclesClient({
           {search ? 'No units match your search.' : 'No units in this category.'}
         </div>
       ) : view === 'table' ? (
-        <div className="rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[160px]">Unit Number</TableHead>
-                <TableHead>Equipment</TableHead>
-                <TableHead className="w-[120px]">Category</TableHead>
-                <TableHead className="w-[120px] text-right">Mileage</TableHead>
-                <TableHead className="w-[50px]" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.vehicles.map((vehicle) => (
-                <TableRow
-                  key={vehicle.id}
-                  className="cursor-pointer"
-                  onClick={() => router.push(`/vehicles/${vehicle.id}`)}
+        <>
+          <div className="space-y-3 md:hidden">
+            {data.vehicles.map((vehicle) => (
+              <div key={vehicle.id} className="rounded-xl border bg-card p-3 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <Link href={`/vehicles/${vehicle.id}`} className="min-w-0 flex-1">
+                    <p className="truncate font-mono font-semibold">{unitNumber(vehicle)}</p>
+                    <p className="truncate text-sm text-muted-foreground">
+                      {vehicle.year} {vehicle.make} {vehicle.model}
+                    </p>
+                  </Link>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 shrink-0"
+                        aria-label="Open menu"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setEditVehicle(vehicle)
+                          setShowForm(true)
+                        }}
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={() => handleDelete(vehicle)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <Link
+                  href={`/vehicles/${vehicle.id}`}
+                  className="mt-3 flex items-center justify-between border-t pt-3"
                 >
-                  <TableCell className="font-mono font-semibold">{unitNumber(vehicle)}</TableCell>
-                  <TableCell className="font-medium">
-                    {vehicle.year} {vehicle.make} {vehicle.model}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="gap-1.5 capitalize">
-                      {vehicle.assetType === 'trailer' ? (
-                        <Container className="h-3.5 w-3.5" />
-                      ) : (
-                        <Truck className="h-3.5 w-3.5" />
-                      )}
-                      {vehicle.assetType === 'trailer' ? 'Trailer' : 'Truck'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {new Intl.NumberFormat('en-US').format(vehicle.mileage)}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(event) => event.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          aria-label="Open menu"
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            setEditVehicle(vehicle)
-                            setShowForm(true)
-                          }}
-                        >
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            handleDelete(vehicle)
-                          }}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+                  <Badge variant="outline" className="gap-1.5 capitalize">
+                    {vehicle.assetType === 'trailer' ? (
+                      <Container className="h-3.5 w-3.5" />
+                    ) : (
+                      <Truck className="h-3.5 w-3.5" />
+                    )}
+                    {vehicle.assetType === 'trailer' ? 'Trailer' : 'Truck'}
+                  </Badge>
+                  <span className="flex items-center gap-1.5 font-mono text-sm text-muted-foreground">
+                    <Gauge className="h-3.5 w-3.5" />
+                    {new Intl.NumberFormat('en-US').format(vehicle.mileage)} mi
+                  </span>
+                </Link>
+              </div>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-lg border md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[160px]">Unit Number</TableHead>
+                  <TableHead>Equipment</TableHead>
+                  <TableHead className="w-[120px]">Category</TableHead>
+                  <TableHead className="w-[120px] text-right">Mileage</TableHead>
+                  <TableHead className="w-[50px]" />
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {data.vehicles.map((vehicle) => (
+                  <TableRow
+                    key={vehicle.id}
+                    className="cursor-pointer"
+                    onClick={() => router.push(`/vehicles/${vehicle.id}`)}
+                  >
+                    <TableCell className="font-mono font-semibold">{unitNumber(vehicle)}</TableCell>
+                    <TableCell className="font-medium">
+                      {vehicle.year} {vehicle.make} {vehicle.model}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="gap-1.5 capitalize">
+                        {vehicle.assetType === 'trailer' ? (
+                          <Container className="h-3.5 w-3.5" />
+                        ) : (
+                          <Truck className="h-3.5 w-3.5" />
+                        )}
+                        {vehicle.assetType === 'trailer' ? 'Trailer' : 'Truck'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm">
+                      {new Intl.NumberFormat('en-US').format(vehicle.mileage)}
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(event) => event.stopPropagation()}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            aria-label="Open menu"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              setEditVehicle(vehicle)
+                              setShowForm(true)
+                            }}
+                          >
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              handleDelete(vehicle)
+                            }}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       ) : isPending ? (
         <div
           className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-3 ${

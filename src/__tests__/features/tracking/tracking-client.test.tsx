@@ -102,10 +102,10 @@ describe('TrackingClient', () => {
   it('shows trucks and trailers together in one tracking view', () => {
     render(<TrackingClient assets={assets} connections={connections} />)
 
-    expect(screen.getByText('TRK-101')).toBeInTheDocument()
-    expect(screen.getByText('TRL-202')).toBeInTheDocument()
-    expect(screen.getByText('Samsara')).toBeInTheDocument()
-    expect(screen.getByText('XTRA Lease')).toBeInTheDocument()
+    expect(screen.getAllByText('TRK-101').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('TRL-202').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Samsara').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('XTRA Lease').length).toBeGreaterThan(0)
     expect(screen.getByText('Needs attention')).toBeInTheDocument()
     expect(screen.getByText(/114 units/)).toBeInTheDocument()
     expect(screen.getByTestId('tracking-map')).toHaveTextContent('truck-1,trailer-1')
@@ -116,8 +116,8 @@ describe('TrackingClient', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'trailers' }))
 
-    expect(screen.queryByText('TRK-101')).not.toBeInTheDocument()
-    expect(screen.getByText('TRL-202')).toBeInTheDocument()
+    expect(screen.queryAllByText('TRK-101')).toHaveLength(0)
+    expect(screen.getAllByText('TRL-202').length).toBeGreaterThan(0)
     expect(screen.getByTestId('tracking-map')).toHaveTextContent('trailer-1')
   })
 })

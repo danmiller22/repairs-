@@ -46,7 +46,7 @@ export default async function VehiclesPage({
   return (
     <>
       <PageHeader />
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+      <div className="flex flex-1 flex-col gap-4 px-3 pb-4 sm:px-4">
         <VehiclesClient
           data={result.data}
           customers={customersResult.data ?? []}

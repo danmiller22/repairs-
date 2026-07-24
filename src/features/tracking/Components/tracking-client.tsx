@@ -225,9 +225,9 @@ export function TrackingClient({
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight">Fleet Tracking</h1>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Fleet Tracking</h1>
             <Badge className="border-primary/25 bg-primary/10 text-primary" variant="outline">
               Integration ready
             </Badge>
@@ -236,7 +236,7 @@ export function TrackingClient({
             Trucks and trailers in one live operational view.
           </p>
         </div>
-        <Button asChild>
+        <Button asChild className="w-full sm:w-auto">
           <Link href="/vehicles?create=true">
             <Plus className="mr-1.5 h-4 w-4" />
             Add Unit
@@ -244,21 +244,21 @@ export function TrackingClient({
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
         {[
           { label: 'All units', value: assets.length, icon: Radio },
           { label: 'Trucks', value: trucks, icon: Truck },
           { label: 'Trailers', value: trailers, icon: Container },
           { label: 'Located now', value: located, icon: MapPin },
         ].map(({ label, value, icon: Icon }) => (
-          <Card key={label} className="border-0 py-4 shadow-sm">
-            <CardContent className="flex items-center justify-between px-4">
+          <Card key={label} className="border-0 py-3 shadow-sm sm:py-4">
+            <CardContent className="flex items-center justify-between px-3 sm:px-4">
               <div>
                 <p className="text-xs text-muted-foreground">{label}</p>
-                <p className="mt-1 text-2xl font-semibold">{value}</p>
+                <p className="mt-1 text-xl font-semibold sm:text-2xl">{value}</p>
               </div>
-              <div className="rounded-lg bg-primary/10 p-2.5 text-primary">
-                <Icon className="h-5 w-5" />
+              <div className="rounded-lg bg-primary/10 p-2 text-primary sm:p-2.5">
+                <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
             </CardContent>
           </Card>
@@ -267,19 +267,24 @@ export function TrackingClient({
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
         <Card className="overflow-hidden border-0 py-0 shadow-sm">
-          <div className="h-[430px]">
+          <div className="h-[300px] sm:h-[380px] lg:h-[430px]">
             <TrackingMap assets={filteredAssets} />
           </div>
         </Card>
 
         <Card className="border-0 shadow-sm">
           <CardHeader className="gap-3">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col items-start gap-3 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Link2 className="h-4 w-4 text-primary" />
                 Tracking connections
               </CardTitle>
-              <Button variant="outline" size="sm" onClick={() => setConfiguring('samsara')}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full min-[420px]:w-auto"
+                onClick={() => setConfiguring('samsara')}
+              >
                 <PlugZap className="mr-1.5 h-3.5 w-3.5" />
                 Add provider
               </Button>
@@ -326,7 +331,7 @@ export function TrackingClient({
                   </p>
                 ) : null}
                 {provider.available && (
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 min-[420px]:flex-row">
                     <Button
                       variant="outline"
                       size="sm"
@@ -363,20 +368,20 @@ export function TrackingClient({
       </div>
 
       <Card className="border-0 shadow-sm">
-        <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <CardHeader className="gap-3 px-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
             <CardTitle className="text-base">All tracked units</CardTitle>
             <p className="text-xs text-muted-foreground">One list for trucks and trailers</p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <div className="flex rounded-lg border p-1">
+            <div className="grid grid-cols-3 rounded-lg border p-1">
               {(['all', 'truck', 'trailer'] as const).map((value) => (
                 <button
                   key={value}
                   type="button"
                   onClick={() => setFilter(value)}
                   className={cn(
-                    'rounded-md px-3 py-1 text-xs font-medium capitalize transition-colors',
+                    'min-h-8 rounded-md px-3 py-1 text-xs font-medium capitalize transition-colors',
                     filter === value
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:text-foreground'
@@ -397,8 +402,111 @@ export function TrackingClient({
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-hidden rounded-lg border">
+        <CardContent className="px-3 pb-3 sm:px-6 sm:pb-6">
+          <div className="space-y-3 md:hidden">
+            {filteredAssets.length === 0 ? (
+              <div className="rounded-lg border px-4 py-12 text-center text-sm text-muted-foreground">
+                {assets.length === 0
+                  ? 'No units yet. Add a truck or trailer in Fleet and it will appear here automatically.'
+                  : 'No units match this filter.'}
+              </div>
+            ) : (
+              filteredAssets.map((asset) => {
+                const status = asset.trackingStatus || 'offline'
+                const hasLocation =
+                  asset.trackingLatitude !== null && asset.trackingLongitude !== null
+                return (
+                  <div key={asset.id} className="rounded-xl border bg-card p-3 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <Link
+                          href={`/vehicles/${asset.id}`}
+                          className="block truncate font-semibold hover:text-primary"
+                        >
+                          {asset.licensePlate || `${asset.year} ${asset.make}`}
+                        </Link>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {asset.year} {asset.make} {asset.model}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 shrink-0"
+                        aria-label="Update location"
+                        onClick={() => setEditing(asset)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Badge variant="outline" className={cn('capitalize', statusStyles[status])}>
+                        {status}
+                      </Badge>
+                      {asset.assetType === 'trailer' && (
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            'capitalize',
+                            asset.trackingCargoStatus === 'loaded'
+                              ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-500'
+                              : asset.trackingCargoStatus === 'empty'
+                                ? 'border-blue-500/25 bg-blue-500/10 text-blue-500'
+                                : 'text-muted-foreground'
+                          )}
+                        >
+                          {asset.trackingCargoStatus || 'unknown'}
+                        </Badge>
+                      )}
+                      <span className="text-xs capitalize text-muted-foreground">
+                        {asset.trackingProvider || 'Not connected'}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs">
+                      <div>
+                        <p className="text-muted-foreground">At location</p>
+                        <p className="mt-0.5 font-medium">
+                          {asset.assetType === 'trailer'
+                            ? formatDwell(asset.trackingStoppedSince, asset.trackingStatus)
+                            : '—'}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-muted-foreground">Updated</p>
+                        <p className="mt-0.5 font-medium">
+                          {formatLastSeen(asset.trackingLastSeenAt)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 min-w-0 text-sm">
+                      {hasLocation ? (
+                        <a
+                          href={`https://www.openstreetmap.org/?mlat=${asset.trackingLatitude}&mlon=${asset.trackingLongitude}#map=15/${asset.trackingLatitude}/${asset.trackingLongitude}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex min-w-0 items-center gap-1 text-muted-foreground hover:text-primary"
+                        >
+                          <MapPin className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">
+                            {asset.trackingAddress ||
+                              `${asset.trackingLatitude?.toFixed(4)}, ${asset.trackingLongitude?.toFixed(4)}`}
+                          </span>
+                          <ExternalLink className="h-3 w-3 shrink-0" />
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground">No location</span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-lg border md:block">
             <Table>
               <TableHeader>
                 <TableRow>

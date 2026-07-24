@@ -29,7 +29,10 @@ import { Badge } from '@/components/ui/badge'
 import { BarcodeScannerDialog } from '@/components/barcode-scanner-dialog'
 import { InventoryPartForm } from '@/features/inventory/Components/InventoryPartForm'
 import { lookupPartByBarcode } from '@/features/inventory/Actions/lookupPartByBarcode'
-import { adjustInventoryStock, getInventoryPart } from '@/features/inventory/Actions/inventoryActions'
+import {
+  adjustInventoryStock,
+  getInventoryPart,
+} from '@/features/inventory/Actions/inventoryActions'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -40,7 +43,10 @@ const primaryItems = [
   { href: '/tracking', icon: MapPinned, labelKey: 'tracking' },
 ] as const
 
-const allDrawerItems = [{ href: '/settings', icon: Settings, labelKey: 'settings' }, { href: '/admin', icon: ShieldCheck, labelKey: 'adminPanel' }] as const
+const allDrawerItems = [
+  { href: '/settings', icon: Settings, labelKey: 'settings' },
+  { href: '/admin', icon: ShieldCheck, labelKey: 'adminPanel' },
+] as const
 
 export function MobileBottomNav({ isSuperAdmin }: { isSuperAdmin?: boolean }) {
   const pathname = usePathname()
@@ -60,7 +66,8 @@ export function MobileBottomNav({ isSuperAdmin }: { isSuperAdmin?: boolean }) {
   const [scannedBarcode, setScannedBarcode] = useState('')
   const [showScanActions, setShowScanActions] = useState(false)
   const [showPartForm, setShowPartForm] = useState(false)
-  const [editPartData, setEditPartData] = useState<Parameters<typeof InventoryPartForm>[0]['part']>(undefined)
+  const [editPartData, setEditPartData] =
+    useState<Parameters<typeof InventoryPartForm>[0]['part']>(undefined)
   const [addQty, setAddQty] = useState(1)
   const [addingStock, setAddingStock] = useState(false)
 
@@ -83,7 +90,7 @@ export function MobileBottomNav({ isSuperAdmin }: { isSuperAdmin?: boolean }) {
   return (
     <>
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background pb-[env(safe-area-inset-bottom)] md:hidden">
-        <div className="grid grid-cols-5">
+        <div className="grid min-h-14 grid-cols-5">
           {primaryItems.map(({ href, icon: Icon, labelKey }) => {
             const isActive = pathname === href || pathname.startsWith(`${href}/`)
             return (
@@ -91,20 +98,23 @@ export function MobileBottomNav({ isSuperAdmin }: { isSuperAdmin?: boolean }) {
                 key={href}
                 href={href}
                 className={cn(
-                  'flex flex-col items-center gap-0.5 py-2 text-[10px]',
+                  'min-w-0 touch-manipulation flex flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px]',
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 )}
               >
                 <Icon className="h-5 w-5" />
-                <span>{t(labelKey)}</span>
+                <span className="w-full truncate text-center">{t(labelKey)}</span>
               </Link>
             )
           })}
           <button
             type="button"
-            onClick={(e) => { e.currentTarget.blur(); setDrawerOpen(true) }}
+            onClick={(e) => {
+              e.currentTarget.blur()
+              setDrawerOpen(true)
+            }}
             className={cn(
-              'flex flex-col items-center gap-0.5 py-2 text-[10px]',
+              'min-w-0 touch-manipulation flex flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px]',
               isMoreActive ? 'text-primary' : 'text-muted-foreground'
             )}
           >
@@ -161,10 +171,13 @@ export function MobileBottomNav({ isSuperAdmin }: { isSuperAdmin?: boolean }) {
         onScan={handleBarcodeScan}
       />
 
-      <Drawer open={showScanActions} onOpenChange={(open) => {
-        setShowScanActions(open)
-        if (!open) router.refresh()
-      }}>
+      <Drawer
+        open={showScanActions}
+        onOpenChange={(open) => {
+          setShowScanActions(open)
+          if (!open) router.refresh()
+        }}
+      >
         <DrawerContent aria-describedby={undefined}>
           <DrawerHeader>
             <DrawerTitle>{tScan('title')}</DrawerTitle>
@@ -178,8 +191,14 @@ export function MobileBottomNav({ isSuperAdmin }: { isSuperAdmin?: boolean }) {
                 <div className="min-w-0 flex-1">
                   <p className="font-medium truncate">{scannedPart.name}</p>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    {scannedPart.partNumber && <span className="font-mono text-xs">{scannedPart.partNumber}</span>}
-                    {scannedPart.category && <Badge variant="secondary" className="text-[10px]">{scannedPart.category}</Badge>}
+                    {scannedPart.partNumber && (
+                      <span className="font-mono text-xs">{scannedPart.partNumber}</span>
+                    )}
+                    {scannedPart.category && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        {scannedPart.category}
+                      </Badge>
+                    )}
                   </div>
                 </div>
                 <div className="text-right text-sm text-muted-foreground shrink-0">
@@ -197,7 +216,9 @@ export function MobileBottomNav({ isSuperAdmin }: { isSuperAdmin?: boolean }) {
                 >
                   -
                 </Button>
-                <span className="w-16 text-center text-3xl font-semibold tabular-nums">{addQty}</span>
+                <span className="w-16 text-center text-3xl font-semibold tabular-nums">
+                  {addQty}
+                </span>
                 <Button
                   variant="outline"
                   size="icon"
@@ -227,7 +248,10 @@ export function MobileBottomNav({ isSuperAdmin }: { isSuperAdmin?: boolean }) {
                   className="flex-1"
                   onClick={async () => {
                     setAddingStock(true)
-                    const result = await adjustInventoryStock({ id: scannedPart.id, adjustment: addQty })
+                    const result = await adjustInventoryStock({
+                      id: scannedPart.id,
+                      adjustment: addQty,
+                    })
                     setAddingStock(false)
                     if (result.success) {
                       toast.success(tScan('addedStock', { amount: addQty }))
@@ -237,7 +261,11 @@ export function MobileBottomNav({ isSuperAdmin }: { isSuperAdmin?: boolean }) {
                   }}
                   disabled={addingStock}
                 >
-                  {addingStock ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                  {addingStock ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plus className="mr-2 h-4 w-4" />
+                  )}
                   {tScan('addStock')} (+{addQty})
                 </Button>
                 <Button

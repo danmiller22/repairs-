@@ -130,66 +130,73 @@ export function PageHeader() {
 
   return (
     <>
-    <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 bg-background px-4">
-      <SidebarTrigger className="-ml-1" />
-      <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
-      <Breadcrumb>
-        <BreadcrumbList>
-          {segments.map((segment, i) => {
-            const isLast = i === segments.length - 1
-            if (isLast) {
+      <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 bg-background px-3 sm:h-16 sm:px-4">
+        <SidebarTrigger className="-ml-1" />
+        <Separator
+          orientation="vertical"
+          className="mr-1 data-[orientation=vertical]:h-4 sm:mr-2"
+        />
+        <Breadcrumb className="min-w-0 overflow-hidden">
+          <BreadcrumbList className="flex-nowrap">
+            {segments.map((segment, i) => {
+              const isLast = i === segments.length - 1
+              if (isLast) {
+                return (
+                  <BreadcrumbItem key={i}>
+                    <BreadcrumbPage className="block max-w-[38vw] truncate sm:max-w-none">
+                      {t(segment.key)}
+                    </BreadcrumbPage>
+                  </BreadcrumbItem>
+                )
+              }
               return (
-                <BreadcrumbItem key={i}>
-                  <BreadcrumbPage>{t(segment.key)}</BreadcrumbPage>
-                </BreadcrumbItem>
+                <Fragment key={i}>
+                  <BreadcrumbItem className="hidden md:block">
+                    {segment.href ? (
+                      <BreadcrumbLink href={segment.href}>{t(segment.key)}</BreadcrumbLink>
+                    ) : (
+                      <BreadcrumbPage>{t(segment.key)}</BreadcrumbPage>
+                    )}
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator className="hidden md:block" />
+                </Fragment>
               )
-            }
-            return (
-              <Fragment key={i}>
-                <BreadcrumbItem className="hidden md:block">
-                  {segment.href ? (
-                    <BreadcrumbLink href={segment.href}>{t(segment.key)}</BreadcrumbLink>
-                  ) : (
-                    <BreadcrumbPage>{t(segment.key)}</BreadcrumbPage>
-                  )}
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-              </Fragment>
-            )
-          })}
-        </BreadcrumbList>
-      </Breadcrumb>
-      <div className="ml-auto flex items-center gap-2">
-        <SearchTrigger />
-        <QuickCreateMenu />
-      </div>
-    </header>
-    {daysUntilExpiry !== null && daysUntilExpiry <= 14 && !dismissed && (
-      <div className={`flex items-center gap-2 px-4 py-2 text-sm ${
-        daysUntilExpiry <= 0
-          ? 'bg-destructive/10 text-destructive border-b border-destructive/20'
-          : daysUntilExpiry <= 3
-            ? 'bg-red-500/10 text-red-600 border-b border-red-500/20'
-            : 'bg-amber-500/10 text-amber-600 border-b border-amber-500/20'
-      }`}>
-        <AlertTriangle className="h-4 w-4 shrink-0" />
-        <span>
-          {daysUntilExpiry <= 0
-            ? tn('licenseExpired')
-            : daysUntilExpiry === 1
-              ? tn('licenseExpiresTomorrow')
-              : tn('licenseExpiresDays', { days: daysUntilExpiry })}
-        </span>
-        <div className="ml-auto flex items-center gap-2 shrink-0">
-          <Link href="/settings/license" className="font-medium underline hover:no-underline">
-            {tn('licenseRenew')}
-          </Link>
-          <button type="button" onClick={dismiss} className="p-0.5 rounded hover:bg-black/10">
-            <X className="h-3.5 w-3.5" />
-          </button>
+            })}
+          </BreadcrumbList>
+        </Breadcrumb>
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <SearchTrigger />
+          <QuickCreateMenu />
         </div>
-      </div>
-    )}
+      </header>
+      {daysUntilExpiry !== null && daysUntilExpiry <= 14 && !dismissed && (
+        <div
+          className={`flex items-center gap-2 px-4 py-2 text-sm ${
+            daysUntilExpiry <= 0
+              ? 'bg-destructive/10 text-destructive border-b border-destructive/20'
+              : daysUntilExpiry <= 3
+                ? 'bg-red-500/10 text-red-600 border-b border-red-500/20'
+                : 'bg-amber-500/10 text-amber-600 border-b border-amber-500/20'
+          }`}
+        >
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>
+            {daysUntilExpiry <= 0
+              ? tn('licenseExpired')
+              : daysUntilExpiry === 1
+                ? tn('licenseExpiresTomorrow')
+                : tn('licenseExpiresDays', { days: daysUntilExpiry })}
+          </span>
+          <div className="ml-auto flex items-center gap-2 shrink-0">
+            <Link href="/settings/license" className="font-medium underline hover:no-underline">
+              {tn('licenseRenew')}
+            </Link>
+            <button type="button" onClick={dismiss} className="p-0.5 rounded hover:bg-black/10">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
     </>
   )
 }
